@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import sqlite3
@@ -10,6 +11,7 @@ from fastapi.responses import FileResponse
 
 from ..config import DATABASE_PATH, DB_DELAYS_PATH, directory
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -237,7 +239,8 @@ def get_transfer_statistics(
         print(f"Error in get_transfer_statistics: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception('statistics error')
+        raise HTTPException(status_code=500, detail='Внутренняя ошибка сервера')
 
 
 @router.get('/api/transfer-statistics/export')
@@ -451,7 +454,8 @@ def export_transfer_statistics(
         print(f"Error in export_transfer_statistics: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception('statistics error')
+        raise HTTPException(status_code=500, detail='Внутренняя ошибка сервера')
 
 
 @router.get('/api/chart_data')
@@ -521,7 +525,8 @@ def get_chart_data(
 
     except Exception as e:
         print(f"Error in get_chart_data: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception('statistics error')
+        raise HTTPException(status_code=500, detail='Внутренняя ошибка сервера')
 
 
 @router.get('/api/chart_filters')
@@ -539,7 +544,8 @@ def get_chart_filters():
 
     except Exception as e:
         print(f"Error in get_chart_filters: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception('statistics error')
+        raise HTTPException(status_code=500, detail='Внутренняя ошибка сервера')
 
 
 @router.get('/api/date_range')
@@ -557,4 +563,5 @@ def get_date_range():
 
     except Exception as e:
         print(f"Error in get_date_range: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception('statistics error')
+        raise HTTPException(status_code=500, detail='Внутренняя ошибка сервера')

@@ -4,6 +4,7 @@ export interface User {
   organization: string;
   duty: string;
   login: string;
+  is_admin: boolean;
 }
 
 export interface ScriptFilter {

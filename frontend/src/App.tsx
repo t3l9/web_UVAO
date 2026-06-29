@@ -14,6 +14,7 @@ import AnalyticsDashboard from './components/Analytics/Dashboard';
 import TransferStatisticsReport from './components/TransferStatisticsReport';
 import AdminPanel from './components/AdminPanel';
 import axios, { AxiosError } from 'axios';
+import api, { setToken, clearToken } from './utils/api';
 import debounce from 'lodash.debounce';
 
 function App() {
@@ -46,7 +47,7 @@ function App() {
 
     if (user) {
       try {
-        await axios.post('/api/update-last-visit', {
+        await api.post('/api/update-last-visit', {
           userId: user.id,
           lastVisit: formatDate(now),
         });
@@ -87,15 +88,17 @@ function App() {
     };
   }, [lastActivity, user]);
 
-  const handleLogin = (userData: User) => {
+  const handleLogin = (userData: User, token: string) => {
     setUser(userData);
     localStorage.setItem('user', JSON.stringify(userData));
+    setToken(token);
   };
 
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('user');
     localStorage.removeItem('lastActivity');
+    clearToken();
   };
 
   const handleCloseInactivityDialog = () => {
@@ -105,7 +108,7 @@ function App() {
   if (!user) {
     return (
       <ThemeProvider>
-        <Login onLogin={handleLogin} />
+        <Login onLogin={(user, token) => handleLogin(user, token)} />
         {showInactivityDialog && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-gray-100 dark:border-gray-800 animate-slide-up">

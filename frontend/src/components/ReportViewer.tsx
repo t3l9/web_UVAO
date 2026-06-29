@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { fetchWithAuth } from '../utils/api';
 import { useParams } from 'react-router-dom';
 import { RefreshCw, Loader2, CheckCircle, AlertCircle, Zap, AlertTriangle, Clock } from 'lucide-react';
 import { User } from '../types';
@@ -58,22 +59,10 @@ function ReportViewer({ user }: ReportViewerProps) {
   const { type } = useParams<{ type: string }>();
   const folderName = folderMapping[type || ''] || '';
 
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = !!user?.is_admin;
   const [genStatus, setGenStatus] = useState<GenerationStatus>('idle');
   const [genMessage, setGenMessage] = useState('');
   const [reportState, setReportState] = useState<ReportState | null>(null);
-
-  useEffect(() => {
-    if (!user?.login) return;
-    fetch('/api/admin/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ login: user.login }),
-    })
-      .then(r => r.json())
-      .then(d => setIsAdmin(d.is_admin === true))
-      .catch(() => setIsAdmin(false));
-  }, [user?.login]);
 
   // Сбрасываем статус при смене отчёта
   useEffect(() => {
@@ -105,10 +94,10 @@ function ReportViewer({ user }: ReportViewerProps) {
     setGenStatus('loading');
     setGenMessage('');
     try {
-      const res = await fetch('/api/admin/generate-report', {
+      const res = await fetchWithAuth('/api/admin/generate-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ login: user.login, report_type: type }),
+        body: JSON.stringify({ report_type: type }),
       });
       const data = await res.json();
       if (res.ok) {

@@ -1,34 +1,29 @@
+import logging
 import sqlite3
 import threading
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from ..config import DATABASE_PATH
-from ..utils.auth import hash_password, verify_admin
-from .schemas import AdminVerifyBody, AdminGenerateReportBody, CreateUserBody, UpdateUserBody
+from ..utils.auth import hash_password, get_current_admin
+from .schemas import AdminGenerateReportBody, CreateUserBody, UpdateUserBody
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post('/api/admin/verify')
-def admin_verify(body: AdminVerifyBody):
-    try:
-        is_admin = verify_admin(body.login)
-        return {"is_admin": is_admin}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@router.get('/api/admin/verify')
+def admin_verify(_: dict = Depends(get_current_admin)):
+    return {'is_admin': True}
 
 
 @router.post('/api/admin/generate-report')
-def admin_generate_report(body: AdminGenerateReportBody):
+def admin_generate_report(
+    body: AdminGenerateReportBody,
+    _: dict = Depends(get_current_admin),
+):
     try:
-        login_val = body.login
-        report_type = body.report_type
-
-        if not login_val or not verify_admin(login_val):
-            raise HTTPException(status_code=403, detail='Доступ запрещён')
-
         from ..parsers.ng import ng
         from ..parsers.mm import mm
         from ..parsers.mwi import mwi
@@ -37,258 +32,214 @@ def admin_generate_report(body: AdminGenerateReportBody):
         from ..parsers.oati import oati
 
         report_functions = {
-            'our-city':         ng,
-            'mayor-monitor':    mm,
-            'prefect':          ng,
-            'mzhi':             mwi,
-            'mzhi-statistics':  mwis,
-            'tsafap':           tsafap,
-            'oati':             oati,
+            'our-city':        ng,
+            'mayor-monitor':   mm,
+            'prefect':         ng,
+            'mzhi':            mwi,
+            'mzhi-statistics': mwis,
+            'tsafap':          tsafap,
+            'oati':            oati,
         }
 
-        if report_type not in report_functions:
-            raise HTTPException(status_code=400, detail=f'Неизвестный тип отчёта: {report_type}')
+        if body.report_type not in report_functions:
+            raise HTTPException(status_code=400, detail=f'Неизвестный тип отчёта: {body.report_type}')
 
-        func = report_functions[report_type]
-        thread = threading.Thread(target=func, daemon=True)
+        thread = threading.Thread(target=report_functions[body.report_type], daemon=True)
         thread.start()
-
         return {'status': 'started', 'message': 'Генерация отчёта запущена в фоне'}
 
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception('generate-report error')
+        raise HTTPException(status_code=500, detail='Внутренняя ошибка сервера')
 
 
 @router.get('/api/admin/users')
-def admin_get_users():
+def admin_get_users(_: dict = Depends(get_current_admin)):
     try:
         conn = sqlite3.connect(DATABASE_PATH)
         cursor = conn.cursor()
-
         cursor.execute("""
-            SELECT
-                Users.ID,
-                Users.Name,
-                Users.Login,
-                Users.Password,
-                Organizations.Org_name,
-                Dutys.Duty_name,
-                Users.Last_visit
-            FROM Users
-            LEFT JOIN Organizations ON Users.ID_organization = Organizations.ID_organization
-            LEFT JOIN Dutys ON Users.ID_duty = Dutys.ID_duty
-            ORDER BY Users.ID
+            SELECT u.ID, u.Name, u.Login, o.Org_name, d.Duty_name, u.Last_visit
+            FROM Users u
+            LEFT JOIN Organizations o ON u.ID_organization = o.ID_organization
+            LEFT JOIN Dutys d ON u.ID_duty = d.ID_duty
+            ORDER BY u.ID
         """)
-
-        users = []
-        for row in cursor.fetchall():
-            users.append({
-                "id": row[0],
-                "name": row[1],
-                "login": row[2],
-                "password": row[3],
-                "organization": row[4] or "Не указана",
-                "duty": row[5] or "Не указана",
-                "last_visit": row[6] or "Никогда"
-            })
-
+        users = [
+            {
+                'id':           r[0],
+                'name':         r[1],
+                'login':        r[2],
+                'organization': r[3] or 'Не указана',
+                'duty':         r[4] or 'Не указана',
+                'last_visit':   r[5] or 'Никогда',
+            }
+            for r in cursor.fetchall()
+        ]
         conn.close()
-        return {"users": users}
-
-    except Exception as e:
-        print(f"Error in admin_get_users: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return {'users': users}
+    except Exception:
+        logger.exception('admin_get_users error')
+        raise HTTPException(status_code=500, detail='Внутренняя ошибка сервера')
 
 
 @router.post('/api/admin/users', status_code=201)
-def admin_create_user(body: CreateUserBody):
+def admin_create_user(body: CreateUserBody, _: dict = Depends(get_current_admin)):
+    conn = None
     try:
-        name = body.name
-        login_val = body.login
-        password = body.password
-        id_organization = body.id_organization
-        id_duty = body.id_duty
-
         conn = sqlite3.connect(DATABASE_PATH)
         cursor = conn.cursor()
 
-        cursor.execute("SELECT ID FROM Users WHERE Login = ?", (login_val,))
+        cursor.execute('SELECT ID FROM Users WHERE Login = ?', (body.login,))
         if cursor.fetchone():
-            conn.close()
-            raise HTTPException(status_code=400, detail="User with this login already exists")
-
-        hashed_password = hash_password(password)
-        current_date = datetime.now().strftime("%d.%m.%Y %H:%M")
+            raise HTTPException(status_code=400, detail='Пользователь с таким логином уже существует')
 
         cursor.execute("""
             INSERT INTO Users (Name, Login, Password, ID_organization, ID_duty, Date_of_create)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (name, login_val, hashed_password, id_organization, id_duty, current_date))
-
+        """, (
+            body.name, body.login, hash_password(body.password),
+            body.id_organization, body.id_duty,
+            datetime.now().strftime('%d.%m.%Y %H:%M'),
+        ))
         conn.commit()
-        new_user_id = cursor.lastrowid
-        conn.close()
-
-        return {"message": "User created successfully", "user_id": new_user_id}
+        return {'message': 'Пользователь создан', 'user_id': cursor.lastrowid}
 
     except HTTPException:
         raise
-    except Exception as e:
-        print(f"Error in admin_create_user: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception('admin_create_user error')
+        raise HTTPException(status_code=500, detail='Внутренняя ошибка сервера')
+    finally:
+        if conn:
+            conn.close()
 
 
 @router.put('/api/admin/users/{user_id}')
-def admin_update_user(user_id: int, body: UpdateUserBody):
+def admin_update_user(user_id: int, body: UpdateUserBody, _: dict = Depends(get_current_admin)):
+    conn = None
     try:
-        name = body.name
-        login_val = body.login
-        password = body.password
-        id_organization = body.id_organization
-        id_duty = body.id_duty
-
         conn = sqlite3.connect(DATABASE_PATH)
         cursor = conn.cursor()
 
-        cursor.execute("SELECT ID FROM Users WHERE ID = ?", (user_id,))
+        cursor.execute('SELECT ID FROM Users WHERE ID = ?', (user_id,))
         if not cursor.fetchone():
-            conn.close()
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=404, detail='Пользователь не найден')
 
-        updates = []
-        values = []
+        updates, values = [], []
 
-        if name is not None:
-            updates.append("Name = ?")
-            values.append(name)
-        if login_val is not None:
-            cursor.execute("SELECT ID FROM Users WHERE Login = ? AND ID != ?", (login_val, user_id))
+        if body.name is not None:
+            updates.append('Name = ?'); values.append(body.name)
+        if body.login is not None:
+            cursor.execute('SELECT ID FROM Users WHERE Login = ? AND ID != ?', (body.login, user_id))
             if cursor.fetchone():
-                conn.close()
-                raise HTTPException(status_code=400, detail="User with this login already exists")
-            updates.append("Login = ?")
-            values.append(login_val)
-        if password is not None and password != "":
-            updates.append("Password = ?")
-            values.append(hash_password(password))
-        if id_organization is not None:
-            updates.append("ID_organization = ?")
-            values.append(id_organization)
-        if id_duty is not None:
-            updates.append("ID_duty = ?")
-            values.append(id_duty)
+                raise HTTPException(status_code=400, detail='Логин уже занят')
+            updates.append('Login = ?'); values.append(body.login)
+        if body.password:
+            updates.append('Password = ?'); values.append(hash_password(body.password))
+        if body.id_organization is not None:
+            updates.append('ID_organization = ?'); values.append(body.id_organization)
+        if body.id_duty is not None:
+            updates.append('ID_duty = ?'); values.append(body.id_duty)
 
         if updates:
             values.append(user_id)
-            query = f"UPDATE Users SET {', '.join(updates)} WHERE ID = ?"
-            cursor.execute(query, values)
+            cursor.execute(f"UPDATE Users SET {', '.join(updates)} WHERE ID = ?", values)
             conn.commit()
 
-        conn.close()
-        return {"message": "User updated successfully"}
+        return {'message': 'Пользователь обновлён'}
 
     except HTTPException:
         raise
-    except Exception as e:
-        print(f"Error in admin_update_user: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception('admin_update_user error')
+        raise HTTPException(status_code=500, detail='Внутренняя ошибка сервера')
+    finally:
+        if conn:
+            conn.close()
 
 
 @router.delete('/api/admin/users/{user_id}')
-def admin_delete_user(user_id: int):
+def admin_delete_user(user_id: int, _: dict = Depends(get_current_admin)):
+    conn = None
     try:
         conn = sqlite3.connect(DATABASE_PATH)
         cursor = conn.cursor()
 
-        cursor.execute("SELECT ID FROM Users WHERE ID = ?", (user_id,))
+        cursor.execute('SELECT ID FROM Users WHERE ID = ?', (user_id,))
         if not cursor.fetchone():
-            conn.close()
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=404, detail='Пользователь не найден')
 
-        cursor.execute("DELETE FROM Users WHERE ID = ?", (user_id,))
+        cursor.execute('DELETE FROM Users WHERE ID = ?', (user_id,))
         conn.commit()
-        conn.close()
-
-        return {"message": "User deleted successfully"}
+        return {'message': 'Пользователь удалён'}
 
     except HTTPException:
         raise
-    except Exception as e:
-        print(f"Error in admin_delete_user: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception('admin_delete_user error')
+        raise HTTPException(status_code=500, detail='Внутренняя ошибка сервера')
+    finally:
+        if conn:
+            conn.close()
 
 
 @router.get('/api/admin/organizations')
-def admin_get_organizations():
+def admin_get_organizations(_: dict = Depends(get_current_admin)):
     try:
         conn = sqlite3.connect(DATABASE_PATH)
         cursor = conn.cursor()
-
-        cursor.execute("SELECT ID_organization, Org_name FROM Organizations ORDER BY Org_name")
-        organizations = [{"id": row[0], "name": row[1]} for row in cursor.fetchall()]
-
+        cursor.execute('SELECT ID_organization, Org_name FROM Organizations ORDER BY Org_name')
+        orgs = [{'id': r[0], 'name': r[1]} for r in cursor.fetchall()]
         conn.close()
-        return {"organizations": organizations}
-
-    except Exception as e:
-        print(f"Error in admin_get_organizations: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return {'organizations': orgs}
+    except Exception:
+        logger.exception('admin_get_organizations error')
+        raise HTTPException(status_code=500, detail='Внутренняя ошибка сервера')
 
 
 @router.get('/api/admin/dutys')
-def admin_get_dutys():
+def admin_get_dutys(_: dict = Depends(get_current_admin)):
     try:
         conn = sqlite3.connect(DATABASE_PATH)
         cursor = conn.cursor()
-
-        cursor.execute("SELECT ID_duty, Duty_name FROM Dutys ORDER BY Duty_name")
-        dutys = [{"id": row[0], "name": row[1]} for row in cursor.fetchall()]
-
+        cursor.execute('SELECT ID_duty, Duty_name FROM Dutys ORDER BY Duty_name')
+        dutys = [{'id': r[0], 'name': r[1]} for r in cursor.fetchall()]
         conn.close()
-        return {"dutys": dutys}
-
-    except Exception as e:
-        print(f"Error in admin_get_dutys: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return {'dutys': dutys}
+    except Exception:
+        logger.exception('admin_get_dutys error')
+        raise HTTPException(status_code=500, detail='Внутренняя ошибка сервера')
 
 
 @router.get('/api/admin/activity')
-def admin_get_activity():
+def admin_get_activity(_: dict = Depends(get_current_admin)):
     try:
         conn = sqlite3.connect(DATABASE_PATH)
         cursor = conn.cursor()
-
         cursor.execute("""
-            SELECT
-                Users.ID,
-                Users.Name,
-                Users.Login,
-                Users.Last_visit,
-                Organizations.Org_name,
-                Dutys.Duty_name
-            FROM Users
-            LEFT JOIN Organizations ON Users.ID_organization = Organizations.ID_organization
-            LEFT JOIN Dutys ON Users.ID_duty = Dutys.ID_duty
-            WHERE Users.Last_visit IS NOT NULL
-            ORDER BY Users.Last_visit DESC
+            SELECT u.ID, u.Name, u.Login, u.Last_visit, o.Org_name, d.Duty_name
+            FROM Users u
+            LEFT JOIN Organizations o ON u.ID_organization = o.ID_organization
+            LEFT JOIN Dutys d ON u.ID_duty = d.ID_duty
+            WHERE u.Last_visit IS NOT NULL
+            ORDER BY u.Last_visit DESC
         """)
-
-        activities = []
-        for row in cursor.fetchall():
-            activities.append({
-                "id": row[0],
-                "name": row[1],
-                "login": row[2],
-                "last_visit": row[3],
-                "organization": row[4] or "Не указана",
-                "duty": row[5] or "Не указана"
-            })
-
+        activities = [
+            {
+                'id':           r[0],
+                'name':         r[1],
+                'login':        r[2],
+                'last_visit':   r[3],
+                'organization': r[4] or 'Не указана',
+                'duty':         r[5] or 'Не указана',
+            }
+            for r in cursor.fetchall()
+        ]
         conn.close()
-        return {"activities": activities}
-
-    except Exception as e:
-        print(f"Error in admin_get_activity: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return {'activities': activities}
+    except Exception:
+        logger.exception('admin_get_activity error')
+        raise HTTPException(status_code=500, detail='Внутренняя ошибка сервера')

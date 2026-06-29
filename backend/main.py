@@ -5,11 +5,13 @@ import threading
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
-# Отключаем буферизацию stdout — print() сразу появляется в консоли
+from .utils.limiter import limiter
+
 sys.stdout.reconfigure(line_buffering=True)
 
-# HTTP-логи uvicorn
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(name)s] %(levelname)s: %(message)s',
@@ -20,6 +22,9 @@ logging.getLogger('uvicorn').setLevel(logging.INFO)
 logging.getLogger('uvicorn.access').setLevel(logging.INFO)
 
 app = FastAPI(title='web_UVAO API', version='2.0.0')
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,

@@ -1,34 +1,40 @@
-# FastAPI и ASGI сервер
+# FastAPI and ASGI
 fastapi
 uvicorn[standard]
 
-# Работа с Excel
+# Auth
+passlib[bcrypt]>=1.7.4
+python-jose[cryptography]>=3.3.0
+
+# Rate limiting
+slowapi>=0.1.9
+
+# Excel
 openpyxl>=3.1.2
 pandas>=2.1.4
 xlsxwriter>=3.1.9
 
-# Автоматизация браузера (Selenium)
+# Browser automation
 selenium>=4.15.2
 webdriver-manager>=4.0.1
 
-# Работа с SSH и сервером
+# SSH / SCP
 paramiko>=3.4.0
 
-# Утилиты
+# Utilities
 schedule>=1.2.1
 requests>=2.31.0
 Werkzeug>=3.0.1
 
-# Windows COM автоматизация (только Windows)
+# Windows COM automation (Windows only)
 pywin32>=306
 
-# Обработка изображений (для PDF)
+# PDF generation
 pillow>=10.1.0
 reportlab>=4.0.7
 
-# Таймаут для операций Excel
+# Excel timeout wrapper
 timeout-decorator==0.5.0
 
-# Переменные окружения
+# Environment variables
 python-dotenv>=1.0.1
-

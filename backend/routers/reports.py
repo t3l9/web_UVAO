@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import time
@@ -11,6 +12,7 @@ from werkzeug.utils import secure_filename
 from ..config import BASE_DIR, _status_cache
 from ..utils.status import _load_failure_state
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -76,7 +78,8 @@ def get_archive(folder: Optional[str] = Query(None)):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception('reports error')
+        raise HTTPException(status_code=500, detail='Внутренняя ошибка сервера')
 
 
 @router.get('/api/archive/download')
@@ -105,7 +108,8 @@ def download_file(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception('reports error')
+        raise HTTPException(status_code=500, detail='Внутренняя ошибка сервера')
 
 
 @router.get('/api/files')
@@ -142,7 +146,8 @@ def get_files(folder_name: Optional[str] = Query(None)):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception('reports error')
+        raise HTTPException(status_code=500, detail='Внутренняя ошибка сервера')
 
 
 @router.get('/reports/{folder_name}/{filename:path}')
@@ -168,4 +173,5 @@ def serve_report(folder_name: str, filename: str):
         import traceback
         print(f"❌ Ошибка в serve_report: {e}")
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception('reports error')
+        raise HTTPException(status_code=500, detail='Внутренняя ошибка сервера')

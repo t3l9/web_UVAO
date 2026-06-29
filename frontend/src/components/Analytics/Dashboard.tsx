@@ -4,6 +4,7 @@ import { ArrowLeft, LineChart, Lock, AlertCircle } from 'lucide-react';
 import BarChartDashboard from './BarChartDashboard';
 import DetailedIssuesTable from './DetailedIssuesTable';
 import { User } from '../../types';
+import { fetchWithAuth } from '../../utils/api';
 
 interface RegionIds { [key: string]: string; }
 interface DashboardProps { user: User; }
@@ -58,23 +59,8 @@ function Dashboard({ user }: DashboardProps) {
   const [showComparison, setShowComparison] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = !!user.is_admin;
   const [selectedDistricts, setSelectedDistricts] = useState<string[]>(ALL_DISTRICTS);
-
-  useEffect(() => {
-    const checkAdmin = async () => {
-      try {
-        const response = await fetch('/api/admin/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ login: user.login }),
-        });
-        const data = await response.json();
-        setIsAdmin(data.is_admin);
-      } catch { /* ignore */ }
-    };
-    checkAdmin();
-  }, [user.login]);
 
   const fetchReportData = async (currentFilters: Filters) => {
     try {
@@ -135,9 +121,8 @@ function Dashboard({ user }: DashboardProps) {
 
   const handleDeleteOverdue = async (requestId: string) => {
     try {
-      const response = await fetch(`/api/overdue/${requestId}`, {
+      const response = await fetchWithAuth(`/api/overdue/${requestId}`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json', 'X-User-Login': user.login },
       });
       if (response.ok) {
         fetchReportData(filters);

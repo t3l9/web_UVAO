@@ -3,7 +3,7 @@ import { User } from '../types';
 import { Building2, Eye, EyeOff } from 'lucide-react';
 
 interface LoginProps {
-  onLogin: (user: User) => void;
+  onLogin: (user: User, token: string) => void;
 }
 
 function Login({ onLogin }: LoginProps) {
@@ -28,7 +28,7 @@ function Login({ onLogin }: LoginProps) {
       const data = await response.json();
 
       if (response.ok) {
-        onLogin(data.user);
+        onLogin(data.user, data.access_token);
       } else {
         setError(data.detail || 'Неверный логин или пароль');
       }

@@ -6,13 +6,12 @@ import {
   ChevronDown, ChevronUp, ChevronsUpDown,
   Eye, EyeOff, UserCheck, CalendarDays,
 } from 'lucide-react';
-import axios from 'axios';
+import api from '../utils/api';
 
 interface User {
   id: number;
   name: string;
   login: string;
-  password: string;
   organization: string;
   duty: string;
   last_visit: string;
@@ -135,9 +134,8 @@ const AdminPanel: React.FC = () => {
       const savedUser = localStorage.getItem('user');
       if (savedUser) {
         try {
-          const { login } = JSON.parse(savedUser);
-          const res = await axios.post('/api/admin/verify', { login });
-          setIsAdmin(res.data.is_admin);
+          const { is_admin } = JSON.parse(savedUser);
+          setIsAdmin(!!is_admin);
         } catch { setIsAdmin(false); }
       }
       setIsAdminVerified(true);
@@ -151,10 +149,10 @@ const AdminPanel: React.FC = () => {
     setLoading(true);
     try {
       const [uRes, oRes, dRes, aRes] = await Promise.all([
-        axios.get('/api/admin/users'),
-        axios.get('/api/admin/organizations'),
-        axios.get('/api/admin/dutys'),
-        axios.get('/api/admin/activity'),
+        api.get('/api/admin/users'),
+        api.get('/api/admin/organizations'),
+        api.get('/api/admin/dutys'),
+        api.get('/api/admin/activity'),
       ]);
       setUsers(uRes.data.users);
       setOrganizations(oRes.data.organizations);
@@ -250,9 +248,9 @@ const AdminPanel: React.FC = () => {
   const handleSaveUser = async () => {
     try {
       if (editingUser) {
-        await axios.put(`/api/admin/users/${editingUser.id}`, userForm);
+        await api.put(`/api/admin/users/${editingUser.id}`, userForm);
       } else {
-        await axios.post('/api/admin/users', userForm);
+        await api.post('/api/admin/users', userForm);
       }
       setShowUserModal(false);
       loadData();
@@ -262,7 +260,7 @@ const AdminPanel: React.FC = () => {
   const handleDeleteUser = async () => {
     if (userToDelete === null) return;
     try {
-      await axios.delete(`/api/admin/users/${userToDelete}`);
+      await api.delete(`/api/admin/users/${userToDelete}`);
       setShowDeleteConfirm(false);
       setUserToDelete(null);
       loadData();

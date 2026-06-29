@@ -7,12 +7,7 @@ class LoginBody(BaseModel):
     password: str
 
 
-class AdminVerifyBody(BaseModel):
-    login: str
-
-
 class AdminGenerateReportBody(BaseModel):
-    login: str
     report_type: str
 
 
@@ -30,8 +25,8 @@ class CreateUserBody(BaseModel):
 
 
 class UpdateUserBody(BaseModel):
-    name: Optional[str] = None
-    login: Optional[str] = None
-    password: Optional[str] = None
+    name:            Optional[str] = None
+    login:           Optional[str] = None
+    password:        Optional[str] = None
     id_organization: Optional[int] = None
-    id_duty: Optional[int] = None
+    id_duty:         Optional[int] = None

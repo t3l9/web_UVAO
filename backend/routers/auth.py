@@ -1,64 +1,70 @@
+import logging
 import sqlite3
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from ..config import DATABASE_PATH
-from ..utils.auth import hash_password
+from ..utils.auth import verify_password, migrate_to_bcrypt, create_access_token, verify_admin
+from ..utils.limiter import limiter
 from .schemas import LoginBody
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
+
+_DUMMY_HASH = '$2b$12$invalidhashplaceholderXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
 
 
 @router.post('/api/auth/login')
-def login_endpoint(body: LoginBody):
+@limiter.limit('10/minute')
+def login_endpoint(request: Request, body: LoginBody):
     conn = None
     try:
-        login_val = body.login
-        password = body.password
-
-        if not login_val or not password:
-            raise HTTPException(status_code=400, detail="Логин и пароль обязательны")
-
         conn = sqlite3.connect(DATABASE_PATH)
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT
-                Users.ID,
-                Users.Name,
-                Organizations.Org_name,
-                Dutys.Duty_name,
-                Users.Login,
-                Users.Password
-            FROM Users
-            LEFT JOIN Organizations ON Users.ID_organization = Organizations.ID_organization
-            LEFT JOIN Dutys ON Users.ID_duty = Dutys.ID_duty
-            WHERE Users.Login = ?
-        """, (login_val,))
-        user = cursor.fetchone()
+            SELECT u.ID, u.Name, o.Org_name, d.Duty_name, u.Login, u.Password
+            FROM Users u
+            LEFT JOIN Organizations o ON u.ID_organization = o.ID_organization
+            LEFT JOIN Dutys d ON u.ID_duty = d.ID_duty
+            WHERE u.Login = ?
+        """, (body.login,))
+        row = cursor.fetchone()
 
-        if user is None:
-            raise HTTPException(status_code=401, detail="Неверный логин или пароль")
+        # Always run verify to prevent timing-based user enumeration
+        stored = row[5] if row else _DUMMY_HASH
+        if not verify_password(body.password, stored) or row is None:
+            raise HTTPException(status_code=401, detail='Неверный логин или пароль')
 
-        user_id, name, org_name, duty_name, db_login, db_password_hash = user
+        user_id, name, org, duty, db_login, stored_hash = row
 
-        if hash_password(password) != db_password_hash:
-            raise HTTPException(status_code=401, detail="Неверный логин или пароль")
+        # Transparent migration: SHA-256 → bcrypt on first successful login
+        if not stored_hash.startswith('$2'):
+            new_hash = migrate_to_bcrypt(body.password)
+            cursor.execute('UPDATE Users SET Password = ? WHERE ID = ?', (new_hash, user_id))
+            conn.commit()
+
+        is_admin = verify_admin(db_login)
+        token = create_access_token(user_id, db_login, is_admin)
 
         return {
-            "user": {
-                "id": user_id,
-                "name": name,
-                "organization": org_name,
-                "duty": duty_name,
-                "login": db_login
-            }
+            'access_token': token,
+            'token_type':   'bearer',
+            'user': {
+                'id':           user_id,
+                'name':         name,
+                'organization': org,
+                'duty':         duty,
+                'login':        db_login,
+                'is_admin':     is_admin,
+            },
         }
 
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception('Login error')
+        raise HTTPException(status_code=500, detail='Внутренняя ошибка сервера')
     finally:
         if conn:
             conn.close()

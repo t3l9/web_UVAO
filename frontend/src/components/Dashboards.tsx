@@ -185,24 +185,7 @@ function SectionHeader({ label, icon: Icon }: { label: string; icon?: React.Comp
 }
 
 function Dashboard({ user }: DashboardProps) {
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    const checkAdmin = async () => {
-      try {
-        const response = await fetch('/api/admin/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ login: user.login }),
-        });
-        const data = await response.json();
-        setIsAdmin(data.is_admin);
-      } catch {
-        // ignore
-      }
-    };
-    checkAdmin();
-  }, [user.login]);
+  const isAdmin = !!user.is_admin;
 
   return (
     <div className="space-y-8 animate-fade-in">
