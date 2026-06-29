@@ -1,0 +1,34 @@
+# FastAPI и ASGI сервер
+fastapi
+uvicorn[standard]
+
+# Работа с Excel
+openpyxl>=3.1.2
+pandas>=2.1.4
+xlsxwriter>=3.1.9
+
+# Автоматизация браузера (Selenium)
+selenium>=4.15.2
+webdriver-manager>=4.0.1
+
+# Работа с SSH и сервером
+paramiko>=3.4.0
+
+# Утилиты
+schedule>=1.2.1
+requests>=2.31.0
+Werkzeug>=3.0.1
+
+# Windows COM автоматизация (только Windows)
+pywin32>=306
+
+# Обработка изображений (для PDF)
+pillow>=10.1.0
+reportlab>=4.0.7
+
+# Таймаут для операций Excel
+timeout-decorator==0.5.0
+
+# Переменные окружения
+python-dotenv>=1.0.1
+
