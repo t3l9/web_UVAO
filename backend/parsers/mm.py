@@ -6,10 +6,17 @@ mmonitor.py — адаптирован для TDM (убраны зависимо
 import os
 import re
 import time
+import shutil
 from datetime import datetime, timedelta
 
 import pandas as pd
 from dotenv import load_dotenv
+
+try:
+    import pythoncom
+    PYTHONCOM_AVAILABLE = True
+except ImportError:
+    PYTHONCOM_AVAILABLE = False
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -682,3 +689,71 @@ Sub CreatePivotTableSnow()
     Next cell
 End Sub
 """
+
+
+
+# ──────────────────────────────────────────────
+# Точка входа для планировщика
+# ──────────────────────────────────────────────
+
+def mm(scheduled_time=None):
+    from ..config import BASE_DIR, _running
+    from ..utils.helpers import upload_reports_to_server, keep_latest_files
+    from ..utils.status import _record_success, _record_failure
+
+    if _running["mm"]:
+        print("[mm] Пропуск: предыдущий запуск ещё выполняется")
+        return
+    _running["mm"] = True
+    _coinit = False
+    try:
+        today = datetime.now()
+        timenow = choosing_time_MM()
+        start_date = f"01.01.{today.year}"
+        end_date   = today.strftime("%d.%m.%Y")
+
+        print(f"[mm] Запуск парсинга ММ... период {start_date} — {end_date}, время суток: {timenow}")
+        success = parcing_data_MM_sync(start_date, end_date)
+        if not success:
+            _record_failure("mm", "Парсер не смог загрузить данные после всех попыток")
+            return
+
+        if PYTHONCOM_AVAILABLE:
+            pythoncom.CoInitialize()
+            _coinit = True
+
+        files = sorted(
+            [f for f in os.listdir(directory) if f.endswith(".xlsx")],
+            key=lambda x: os.path.getmtime(os.path.join(directory, x))
+        )
+        if not files:
+            _record_failure("mm", "Файл не найден в папке Downloads после парсинга")
+            return
+        latest_file = os.path.join(directory, files[-1])
+
+        processed_path, pdf_path = process_file_MM(latest_file, timenow)
+
+        static_directory = os.path.join(BASE_DIR, "MM")
+        os.makedirs(static_directory, exist_ok=True)
+
+        processed_dest = os.path.join(static_directory, os.path.basename(processed_path))
+        shutil.move(processed_path, processed_dest)
+        upload_files = [processed_dest]
+
+        if pdf_path:
+            pdf_dest = os.path.join(static_directory, os.path.basename(pdf_path))
+            shutil.move(pdf_path, pdf_dest)
+            upload_files.append(pdf_dest)
+
+        keep_latest_files(static_directory, keep=5)
+        upload_reports_to_server("MM", upload_files)
+        _record_success("mm")
+        print("[mm] Завершено успешно.")
+
+    except Exception as e:
+        print(f"[mm] Ошибка: {e}")
+        _record_failure("mm", str(e))
+    finally:
+        if _coinit and PYTHONCOM_AVAILABLE:
+            pythoncom.CoUninitialize()
+        _running["mm"] = False
