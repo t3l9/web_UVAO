@@ -127,25 +127,6 @@ def _sync_ng_prosrok(main_df, today_date, day_labels):
     day_by_date = {d: label for d, label in day_labels}
     now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    excluded_date_set = {
-        datetime.strptime(d, "%d.%m.%Y").date() for d in excluded_dates
-    }
-
-    def compute_withdrawal_date(raw_publish):
-        """Дата публикации + 8 рабочих дней (с учётом excluded_dates)."""
-        try:
-            if raw_publish is None or pd.isna(raw_publish):
-                return None
-            pub = pd.to_datetime(raw_publish).date()
-        except Exception:
-            return None
-        count, d = 8, pub
-        while count > 0:
-            d += timedelta(days=1)
-            if d not in excluded_date_set:
-                count -= 1
-        return d.strftime('%d.%m.%Y')
-
     conn = sqlite3.connect(DATABASE_PATH)
     cur = conn.cursor()
     cur.execute("""
@@ -161,14 +142,9 @@ def _sync_ng_prosrok(main_df, today_date, day_labels):
             Day TEXT,
             Status TEXT,
             FirstSeen TEXT,
-            LastSeen TEXT,
-            WithdrawalDate TEXT
+            LastSeen TEXT
         )
     """)
-    try:
-        cur.execute("ALTER TABLE NG_prosrok ADD COLUMN WithdrawalDate TEXT")
-    except sqlite3.OperationalError:
-        pass
 
     def col(row, name):
         value = row.get(name) if name in main_df.columns else None
@@ -192,9 +168,6 @@ def _sync_ng_prosrok(main_df, today_date, day_labels):
         else:
             day_label = day_by_date.get(deadline_date, 'Просрок')
 
-        raw_publish = row.get('Дата публикации сообщения')
-        withdrawal_date = compute_withdrawal_date(raw_publish)
-
         rows_to_upsert.append((
             request_id,
             col(row, 'Дата публикации сообщения'),
@@ -207,13 +180,12 @@ def _sync_ng_prosrok(main_df, today_date, day_labels):
             day_label,
             now_str,
             now_str,
-            withdrawal_date,
         ))
 
     if rows_to_upsert:
         cur.executemany("""
-            INSERT INTO NG_prosrok (ID, PublishDate, District, Deadline, PreparationStatus, Address, Problem, MonitorOverdue, Day, Status, FirstSeen, LastSeen, WithdrawalDate)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'В работе', ?, ?, ?)
+            INSERT INTO NG_prosrok (ID, PublishDate, District, Deadline, PreparationStatus, Address, Problem, MonitorOverdue, Day, Status, FirstSeen, LastSeen)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'В работе', ?, ?)
             ON CONFLICT(ID) DO UPDATE SET
                 PublishDate=excluded.PublishDate,
                 District=excluded.District,
@@ -224,8 +196,7 @@ def _sync_ng_prosrok(main_df, today_date, day_labels):
                 MonitorOverdue=excluded.MonitorOverdue,
                 Day=excluded.Day,
                 Status='В работе',
-                LastSeen=excluded.LastSeen,
-                WithdrawalDate=excluded.WithdrawalDate
+                LastSeen=excluded.LastSeen
         """, rows_to_upsert)
 
     if current_ids:

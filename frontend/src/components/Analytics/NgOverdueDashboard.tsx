@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ListChecks, Lock, AlertCircle, Search, X, ArrowUp, ArrowDown, ChevronsUpDown, Download } from 'lucide-react';
+import { ArrowLeft, ListChecks, Lock, AlertCircle, Search, X, ArrowUp, ArrowDown, ChevronsUpDown, Download, CalendarDays } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer, Cell,
+  ResponsiveContainer,
 } from 'recharts';
 import { User } from '../../types';
 
@@ -20,7 +20,6 @@ interface NgIssue {
   monitorOverdue: string;
   day: string;
   status: string;
-  withdrawalDate: string | null;
 }
 
 const ALL_DISTRICTS = [
@@ -47,12 +46,16 @@ const SHORT_NAMES: Record<string, string> = {
 
 const ngLink = (id: string) => `https://er.mos.ru/ker/admin/issues/view-common?id=${id}&section=all`;
 
+const inputClass = "px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-primary-400 dark:focus:border-primary-500 transition-colors";
+
 function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
   const [issues, setIssues] = useState<NgIssue[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDistricts, setSelectedDistricts] = useState<string[]>(ALL_DISTRICTS);
   const [idSearch, setIdSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [sortField, setSortField] = useState<keyof NgIssue>('deadline');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -79,6 +82,7 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
   }, []);
 
   const isAllSelected = selectedDistricts.length === ALL_DISTRICTS.length;
+  const hasDateFilter = !!(dateFrom || dateTo);
 
   const toggleDistrict = (district: string) => {
     if (isAllSelected) {
@@ -93,14 +97,34 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
     setCurrentPage(1);
   };
 
+  const clearDateFilter = () => { setDateFrom(''); setDateTo(''); setCurrentPage(1); };
+
   const filteredIssues = useMemo(() => {
     let result = issues.filter(i => !i.district || selectedDistricts.includes(i.district));
+
     if (idSearch.trim()) {
       const term = idSearch.trim().toLowerCase();
       result = result.filter(i => i.id.toLowerCase().includes(term));
     }
+
+    if (dateFrom) {
+      const from = new Date(dateFrom).getTime();
+      result = result.filter(i => {
+        if (!i.publishDate) return false;
+        return new Date(i.publishDate).getTime() >= from;
+      });
+    }
+    if (dateTo) {
+      // конец дня "до"
+      const to = new Date(dateTo + 'T23:59:59').getTime();
+      result = result.filter(i => {
+        if (!i.publishDate) return false;
+        return new Date(i.publishDate).getTime() <= to;
+      });
+    }
+
     return result;
-  }, [issues, selectedDistricts, idSearch]);
+  }, [issues, selectedDistricts, idSearch, dateFrom, dateTo]);
 
   const sortedIssues = useMemo(() => {
     return [...filteredIssues].sort((a, b) => {
@@ -131,7 +155,6 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
     setCurrentPage(1);
   };
 
-  // Bar chart data: по районам, разбивка на категории дней
   const chartData = useMemo(() => {
     const activeIssues = filteredIssues.filter(i => i.status !== 'Устранено');
     return ALL_DISTRICTS
@@ -140,7 +163,7 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
         const di = activeIssues.filter(i => i.district === district);
         return {
           name: SHORT_NAMES[district] ?? district,
-          Просрок: di.filter(i => i.day === 'Просрок').length,
+          'Просрок': di.filter(i => i.day === 'Просрок').length,
           '6–8 день': di.filter(i => ['6 день', '7 день', '8 день'].includes(i.day)).length,
           '1–5 день': di.filter(i => ['1 день', '2 день', '3 день', '4 день', '5 день'].includes(i.day)).length,
         };
@@ -157,7 +180,7 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
 
   const rowClass = (day: string) => {
     if (day === 'Просрок') return 'bg-red-100/70 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-950/40';
-    if (day === '8 день' || day === '7 день' || day === '6 день') {
+    if (['8 день', '7 день', '6 день'].includes(day)) {
       return 'bg-red-50/80 dark:bg-red-950/15 hover:bg-red-50 dark:hover:bg-red-950/25';
     }
     return 'hover:bg-gray-50/60 dark:hover:bg-gray-800/30';
@@ -228,55 +251,97 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
         </div>
       </div>
 
-      {/* District filter */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800/80 p-5">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-gray-900 dark:text-white">Фильтр по районам</span>
+      {/* Filters */}
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800/80 p-5 space-y-4">
+
+        {/* District filter */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-gray-900 dark:text-white">Фильтр по районам</span>
+              {!isAllSelected && (
+                <span className="text-xs font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30 px-2 py-0.5 rounded-full">
+                  {selectedDistricts.length} из {ALL_DISTRICTS.length}
+                </span>
+              )}
+            </div>
             {!isAllSelected && (
-              <span className="text-xs font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30 px-2 py-0.5 rounded-full">
-                {selectedDistricts.length} из {ALL_DISTRICTS.length}
-              </span>
+              <button
+                type="button"
+                onClick={() => { setSelectedDistricts(ALL_DISTRICTS); setCurrentPage(1); }}
+                className="text-xs text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+              >
+                Сбросить
+              </button>
             )}
           </div>
-          {!isAllSelected && (
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => { setSelectedDistricts(ALL_DISTRICTS); setCurrentPage(1); }}
-              className="text-xs text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-            >
-              Сбросить
-            </button>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => { setSelectedDistricts(ALL_DISTRICTS); setCurrentPage(1); }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-150 ${
-              isAllSelected
-                ? 'bg-primary-600 text-white shadow-sm'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}
-          >
-            Все
-          </button>
-          {ALL_DISTRICTS.map(district => (
-            <button
-              key={district}
-              type="button"
-              onClick={() => toggleDistrict(district)}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-150 ${
-                !isAllSelected && selectedDistricts.includes(district)
+                isAllSelected
                   ? 'bg-primary-600 text-white shadow-sm'
-                  : !isAllSelected
-                  ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-primary-50 dark:hover:bg-primary-950/20 hover:text-primary-700 dark:hover:text-primary-300'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
               }`}
             >
-              {district}
+              Все
             </button>
-          ))}
+            {ALL_DISTRICTS.map(district => (
+              <button
+                key={district}
+                type="button"
+                onClick={() => toggleDistrict(district)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-150 ${
+                  !isAllSelected && selectedDistricts.includes(district)
+                    ? 'bg-primary-600 text-white shadow-sm'
+                    : !isAllSelected
+                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-primary-50 dark:hover:bg-primary-950/20 hover:text-primary-700 dark:hover:text-primary-300'
+                }`}
+              >
+                {district}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Date range filter */}
+        <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white flex-shrink-0">
+              <CalendarDays className="w-4 h-4 text-gray-400" />
+              Период публикации
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">с</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={e => { setDateFrom(e.target.value); setCurrentPage(1); }}
+                className={inputClass}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">по</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={e => { setDateTo(e.target.value); setCurrentPage(1); }}
+                className={inputClass}
+              />
+            </div>
+            {hasDateFilter && (
+              <button
+                type="button"
+                onClick={clearDateFilter}
+                className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+                Сбросить
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -374,7 +439,7 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[1300px]">
+              <table className="w-full text-sm min-w-[1200px]">
                 <thead>
                   <tr className="border-b border-gray-100 dark:border-gray-800">
                     <th className={thClass} onClick={() => handleSort('id')}>
@@ -388,9 +453,6 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
                     </th>
                     <th className={thClass} onClick={() => handleSort('publishDate')}>
                       <div className="flex items-center gap-1.5">Дата публикации <SortIcon field="publishDate" /></div>
-                    </th>
-                    <th className={thClass}>
-                      Дата для выноса
                     </th>
                     <th className={thClass} onClick={() => handleSort('district')}>
                       <div className="flex items-center gap-1.5">Район <SortIcon field="district" /></div>
@@ -435,11 +497,6 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap text-xs">{formatDate(issue.publishDate)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-xs font-medium">
-                        {issue.withdrawalDate
-                          ? <span className="text-violet-700 dark:text-violet-400">{issue.withdrawalDate}</span>
-                          : <span className="text-gray-400">—</span>}
-                      </td>
                       <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap text-xs">{issue.district || '—'}</td>
                       <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap text-xs">{formatDate(issue.deadline)}</td>
                       <td className="px-4 py-3 text-xs max-w-[180px]">
