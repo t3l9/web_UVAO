@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ListChecks, Lock, AlertCircle, Search, X, ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
+import { ArrowLeft, ListChecks, Lock, AlertCircle, Search, X, ArrowUp, ArrowDown, ChevronsUpDown, Download } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, Cell,
@@ -20,6 +20,7 @@ interface NgIssue {
   monitorOverdue: string;
   day: string;
   status: string;
+  withdrawalDate: string | null;
 }
 
 const ALL_DISTRICTS = [
@@ -286,7 +287,7 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
             Сообщения в работе по районам
           </p>
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={chartData} margin={{ top: 4, right: 16, left: 0, bottom: 40 }} barCategoryGap="30%">
+            <BarChart data={chartData} margin={{ top: 4, right: 16, left: 0, bottom: 50 }} barCategoryGap="30%">
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(156,163,175,0.2)" vertical={false} />
               <XAxis
                 dataKey="name"
@@ -317,7 +318,8 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
                 cursor={{ fill: 'rgba(156,163,175,0.08)' }}
               />
               <Legend
-                wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}
+                verticalAlign="top"
+                wrapperStyle={{ fontSize: '11px', paddingBottom: '12px' }}
                 iconType="circle"
                 iconSize={8}
               />
@@ -334,6 +336,14 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
         {/* Toolbar */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-800">
           <p className="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap flex-grow">Сообщения «Наш Город»</p>
+          <a
+            href="/api/ng_overdue/export"
+            download
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900/50 rounded-xl transition-colors flex-shrink-0"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Выгрузить Excel
+          </a>
           <div className="relative flex-shrink-0 w-full sm:w-60">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
             <input
@@ -379,6 +389,9 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
                     <th className={thClass} onClick={() => handleSort('publishDate')}>
                       <div className="flex items-center gap-1.5">Дата публикации <SortIcon field="publishDate" /></div>
                     </th>
+                    <th className={thClass}>
+                      Дата для выноса
+                    </th>
                     <th className={thClass} onClick={() => handleSort('district')}>
                       <div className="flex items-center gap-1.5">Район <SortIcon field="district" /></div>
                     </th>
@@ -422,6 +435,11 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap text-xs">{formatDate(issue.publishDate)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-xs font-medium">
+                        {issue.withdrawalDate
+                          ? <span className="text-violet-700 dark:text-violet-400">{issue.withdrawalDate}</span>
+                          : <span className="text-gray-400">—</span>}
+                      </td>
                       <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap text-xs">{issue.district || '—'}</td>
                       <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap text-xs">{formatDate(issue.deadline)}</td>
                       <td className="px-4 py-3 text-xs max-w-[180px]">
