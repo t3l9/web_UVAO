@@ -142,9 +142,14 @@ def _sync_ng_prosrok(main_df, today_date, day_labels):
             Day TEXT,
             Status TEXT,
             FirstSeen TEXT,
-            LastSeen TEXT
+            LastSeen TEXT,
+            ExportDate TEXT
         )
     """)
+    try:
+        cur.execute("ALTER TABLE NG_prosrok ADD COLUMN ExportDate TEXT")
+    except sqlite3.OperationalError:
+        pass
 
     def col(row, name):
         value = row.get(name) if name in main_df.columns else None
@@ -178,14 +183,15 @@ def _sync_ng_prosrok(main_df, today_date, day_labels):
             col(row, 'Проблемная тема'),
             col(row, 'Просрок (Монитор)'),
             day_label,
-            now_str,
-            now_str,
+            now_str,  # FirstSeen
+            now_str,  # LastSeen
+            now_str,  # ExportDate — обновляется при каждой активной выгрузке
         ))
 
     if rows_to_upsert:
         cur.executemany("""
-            INSERT INTO NG_prosrok (ID, PublishDate, District, Deadline, PreparationStatus, Address, Problem, MonitorOverdue, Day, Status, FirstSeen, LastSeen)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'В работе', ?, ?)
+            INSERT INTO NG_prosrok (ID, PublishDate, District, Deadline, PreparationStatus, Address, Problem, MonitorOverdue, Day, Status, FirstSeen, LastSeen, ExportDate)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'В работе', ?, ?, ?)
             ON CONFLICT(ID) DO UPDATE SET
                 PublishDate=excluded.PublishDate,
                 District=excluded.District,
@@ -196,7 +202,8 @@ def _sync_ng_prosrok(main_df, today_date, day_labels):
                 MonitorOverdue=excluded.MonitorOverdue,
                 Day=excluded.Day,
                 Status='В работе',
-                LastSeen=excluded.LastSeen
+                LastSeen=excluded.LastSeen,
+                ExportDate=excluded.ExportDate
         """, rows_to_upsert)
 
     if current_ids:
