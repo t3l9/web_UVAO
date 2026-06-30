@@ -129,7 +129,7 @@ const analyticsSections = [
   },
   {
     id: 'ng-overdue',
-    title: 'Дашборд просроков «Наш Город»',
+    title: 'Дашборд НГ',
     description: 'Сообщения НГ в работе, день по правилу 8 дней и статус устранения',
     icon: ListChecks,
     iconClass: 'bg-violet-100 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400',

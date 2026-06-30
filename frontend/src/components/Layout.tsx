@@ -4,7 +4,7 @@ import {
   LogOut, Home, FileText, Sun, Moon, Menu, X,
   BarChart3, BrainCircuit, BookOpen, Table, Bot,
   Building2, ExternalLink, MessageSquare, Monitor,
-  Camera, AlertTriangle, Archive, LineChart,
+  Camera, AlertTriangle, Archive, LineChart, ListChecks,
 } from 'lucide-react';
 import { User } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
@@ -38,6 +38,7 @@ const toolNavItems: NavItemDef[] = [
 const analyticsNavItems: NavItemDef[] = [
   { to: '/analytics/archive', label: 'Архив отчетов', icon: Archive },
   { to: '/analytics/dashboard', label: 'Дашборд ЮВАО', icon: LineChart },
+  { to: '/analytics/ng-overdue', label: 'Дашборд НГ', icon: ListChecks },
   { to: '/analytics/transfer-statistics', label: 'Статистика переносов', icon: BarChart3 },
 ];
 

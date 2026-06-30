@@ -184,7 +184,7 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
         </div>
         <div className="min-w-0">
           <h1 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">
-            Дашборд просроков «Наш Город»
+            Дашборд НГ
           </h1>
           <p className="text-xs text-gray-500 dark:text-gray-400">Сообщения в работе — обновление каждый час</p>
         </div>
