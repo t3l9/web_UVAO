@@ -4,7 +4,7 @@ import {
   MessageSquare, Monitor, Building2, Home, BarChart3,
   Camera, AlertTriangle, BrainCircuit, BookOpen,
   Table, Bot, ExternalLink, ChevronRight, Shield,
-  HelpCircle, ChevronDown, LineChart, Archive,
+  HelpCircle, ChevronDown, LineChart, Archive, ListChecks,
 } from 'lucide-react';
 import { User } from '../types';
 
@@ -126,6 +126,13 @@ const analyticsSections = [
     description: 'Сравнение переносов через бота и фактических',
     icon: BarChart3,
     iconClass: 'bg-indigo-100 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400',
+  },
+  {
+    id: 'ng-overdue',
+    title: 'Дашборд просроков «Наш Город»',
+    description: 'Сообщения НГ в работе, день по правилу 8 дней и статус устранения',
+    icon: ListChecks,
+    iconClass: 'bg-violet-100 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400',
   },
 ];
 

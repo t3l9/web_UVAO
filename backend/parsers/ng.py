@@ -1,5 +1,6 @@
 import os
 import shutil
+import sqlite3
 import time
 import win32com.client
 import pythoncom
@@ -16,7 +17,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service as ChromeService
 from datetime import datetime, timedelta
 
-from ..config import BASE_DIR, directory, login_NG, password_NG, excluded_dates, _running
+from ..config import BASE_DIR, DATABASE_PATH, directory, login_NG, password_NG, excluded_dates, _running
 from ..utils.helpers import safe_excel_operation, send_file_to_telegram, upload_reports_to_server, keep_latest_files, clean_parcing_folder
 from ..utils.status import _record_success, _record_failure, _get_chromedriver
 
@@ -114,6 +115,101 @@ def choosing_day(excluded_date):
             days_count -= 1
     print(user_input)
     return user_input
+
+
+def _sync_ng_prosrok(main_df, today_date, day_labels):
+    """
+    Построчно записывает текущую выгрузку "Ответы в работе" (НГ) в таблицу
+    NG_prosrok: уникально по 'Номер заявки', проставляет 'День' по правилу
+    8 рабочих дней и помечает статус 'В работе' / 'Устранено' относительно
+    предыдущей выгрузки.
+    """
+    day_by_date = {d: label for d, label in day_labels}
+    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    conn = sqlite3.connect(DATABASE_PATH)
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS NG_prosrok (
+            ID TEXT PRIMARY KEY,
+            PublishDate TEXT,
+            District TEXT,
+            Deadline TEXT,
+            PreparationStatus TEXT,
+            Address TEXT,
+            Problem TEXT,
+            MonitorOverdue TEXT,
+            Day TEXT,
+            Status TEXT,
+            FirstSeen TEXT,
+            LastSeen TEXT
+        )
+    """)
+
+    def col(row, name):
+        value = row.get(name) if name in main_df.columns else None
+        if value is None or pd.isna(value):
+            return None
+        return str(value).strip() or None
+
+    rows_to_upsert = []
+    current_ids = []
+
+    for _, row in main_df.iterrows():
+        request_id = col(row, 'Номер заявки')
+        if not request_id:
+            continue
+        current_ids.append(request_id)
+
+        deadline = row.get('Регламентный срок у сообщения (Портал)')
+        deadline_date = deadline.date() if pd.notna(deadline) else None
+        if deadline_date is not None and deadline_date < today_date:
+            day_label = 'Просрок'
+        else:
+            day_label = day_by_date.get(deadline_date, 'Просрок')
+
+        rows_to_upsert.append((
+            request_id,
+            col(row, 'Дата публикации сообщения'),
+            col(row, 'Район'),
+            str(deadline) if pd.notna(deadline) else None,
+            col(row, 'Статус подготовки ответа на сообщение'),
+            col(row, 'Адрес'),
+            col(row, 'Проблемная тема'),
+            col(row, 'Просрок (Монитор)'),
+            day_label,
+            now_str,
+            now_str,
+        ))
+
+    if rows_to_upsert:
+        cur.executemany("""
+            INSERT INTO NG_prosrok (ID, PublishDate, District, Deadline, PreparationStatus, Address, Problem, MonitorOverdue, Day, Status, FirstSeen, LastSeen)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'В работе', ?, ?)
+            ON CONFLICT(ID) DO UPDATE SET
+                PublishDate=excluded.PublishDate,
+                District=excluded.District,
+                Deadline=excluded.Deadline,
+                PreparationStatus=excluded.PreparationStatus,
+                Address=excluded.Address,
+                Problem=excluded.Problem,
+                MonitorOverdue=excluded.MonitorOverdue,
+                Day=excluded.Day,
+                Status='В работе',
+                LastSeen=excluded.LastSeen
+        """, rows_to_upsert)
+
+    if current_ids:
+        placeholders = ','.join('?' for _ in current_ids)
+        cur.execute(
+            f"UPDATE NG_prosrok SET Status = 'Устранено' WHERE Status != 'Устранено' AND ID NOT IN ({placeholders})",
+            current_ids,
+        )
+    else:
+        cur.execute("UPDATE NG_prosrok SET Status = 'Устранено' WHERE Status != 'Устранено'")
+
+    conn.commit()
+    conn.close()
 
 
 def process_ng_prosroki_file(timenow, filepath, excluded_dates):
@@ -423,6 +519,13 @@ def process_ng_prosroki_file(timenow, filepath, excluded_dates):
     holidays_df = main_df[main_df['Регламентный срок у сообщения (Портал)'].isin(excluded_dates_dt)]
     main_df = main_df[~main_df['Регламентный срок у сообщения (Портал)'].isin(excluded_dates_dt)].sort_values(
         by='Регламентный срок у сообщения (Портал)')
+
+    # ====== Синхронизация с БД для дашборда просроков НГ ======
+    day_labels = [
+        (day_8, '8 день'), (day_7, '7 день'), (day_6, '6 день'), (day_5, '5 день'),
+        (date4, '4 день'), (date3, '3 день'), (date2, '2 день'), (date1, '1 день'),
+    ]
+    _sync_ng_prosrok(main_df, today_date, day_labels)
 
     # ====== СВОД ======
     merged_table = pd.merge(pivot_prefect, merged_df, left_index=True, right_index=True, how='outer').fillna(0)

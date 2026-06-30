@@ -40,12 +40,14 @@ from .routers.reports import router as reports_router
 from .routers.statistics import router as statistics_router
 from .routers.overdue import router as overdue_router
 from .routers.admin import router as admin_router
+from .routers.ng_overdue import router as ng_overdue_router
 
 app.include_router(auth_router)
 app.include_router(reports_router)
 app.include_router(statistics_router)
 app.include_router(overdue_router)
 app.include_router(admin_router)
+app.include_router(ng_overdue_router)
 
 
 def run_app():

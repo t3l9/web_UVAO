@@ -11,6 +11,7 @@ import Scripts from './components/Scripts';
 import Knowledge from './components/Knowledge';
 import ArchiveReports from './components/Analytics/ArchiveReports';
 import AnalyticsDashboard from './components/Analytics/Dashboard';
+import NgOverdueDashboard from './components/Analytics/NgOverdueDashboard';
 import TransferStatisticsReport from './components/TransferStatisticsReport';
 import AdminPanel from './components/AdminPanel';
 import axios, { AxiosError } from 'axios';
@@ -147,6 +148,7 @@ function App() {
 
             <Route path="analytics/archive" element={<ArchiveReports user={user} />} />
             <Route path="analytics/dashboard" element={<AnalyticsDashboard user={user} />} />
+            <Route path="analytics/ng-overdue" element={<NgOverdueDashboard user={user} />} />
             <Route path="analytics/transfer-statistics" element={<TransferStatisticsReport />} />
             <Route path="admin" element={<AdminPanel />} />
             <Route path="*" element={<Navigate to="/" replace />} />
