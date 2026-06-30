@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ListChecks, Lock, AlertCircle, Search, X, ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, Cell,
+} from 'recharts';
 import { User } from '../../types';
 
 interface NgOverdueDashboardProps { user: User; }
@@ -23,6 +27,22 @@ const ALL_DISTRICTS = [
   'Люблино', 'Марьино', 'Некрасовка', 'Нижегородский', 'Печатники',
   'Рязанский', 'Текстильщики', 'Южнопортовый',
 ];
+
+const SHORT_NAMES: Record<string, string> = {
+  'АВД ЮВАО': 'АВД ЮВАО',
+  'Выхино-Жулебино': 'Вых.-Жул.',
+  'Капотня': 'Капотня',
+  'Кузьминки': 'Кузьминки',
+  'Лефортово': 'Лефортово',
+  'Люблино': 'Люблино',
+  'Марьино': 'Марьино',
+  'Некрасовка': 'Некрасовка',
+  'Нижегородский': 'Нижегор.',
+  'Печатники': 'Печатники',
+  'Рязанский': 'Рязанский',
+  'Текстильщики': 'Текстильщ.',
+  'Южнопортовый': 'Южнопорт.',
+};
 
 const ngLink = (id: string) => `https://er.mos.ru/ker/admin/issues/view-common?id=${id}&section=all`;
 
@@ -109,6 +129,23 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
     }
     setCurrentPage(1);
   };
+
+  // Bar chart data: по районам, разбивка на категории дней
+  const chartData = useMemo(() => {
+    const activeIssues = filteredIssues.filter(i => i.status !== 'Устранено');
+    return ALL_DISTRICTS
+      .filter(d => selectedDistricts.includes(d))
+      .map(district => {
+        const di = activeIssues.filter(i => i.district === district);
+        return {
+          name: SHORT_NAMES[district] ?? district,
+          Просрок: di.filter(i => i.day === 'Просрок').length,
+          '6–8 день': di.filter(i => ['6 день', '7 день', '8 день'].includes(i.day)).length,
+          '1–5 день': di.filter(i => ['1 день', '2 день', '3 день', '4 день', '5 день'].includes(i.day)).length,
+        };
+      })
+      .filter(d => d['Просрок'] + d['6–8 день'] + d['1–5 день'] > 0);
+  }, [filteredIssues, selectedDistricts]);
 
   function SortIcon({ field }: { field: keyof NgIssue }) {
     if (sortField !== field) return <ChevronsUpDown className="w-3 h-3 text-gray-400 opacity-60" />;
@@ -242,6 +279,56 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
         </div>
       </div>
 
+      {/* Bar chart */}
+      {chartData.length > 0 && (
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800/80 p-5">
+          <p className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
+            Сообщения в работе по районам
+          </p>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={chartData} margin={{ top: 4, right: 16, left: 0, bottom: 40 }} barCategoryGap="30%">
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(156,163,175,0.2)" vertical={false} />
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 11, fill: 'currentColor' }}
+                className="text-gray-500 dark:text-gray-400"
+                angle={-35}
+                textAnchor="end"
+                interval={0}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                allowDecimals={false}
+                tick={{ fontSize: 11, fill: 'currentColor' }}
+                className="text-gray-400 dark:text-gray-500"
+                tickLine={false}
+                axisLine={false}
+                width={28}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'var(--tooltip-bg, #fff)',
+                  border: '1px solid rgba(156,163,175,0.3)',
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                }}
+                cursor={{ fill: 'rgba(156,163,175,0.08)' }}
+              />
+              <Legend
+                wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}
+                iconType="circle"
+                iconSize={8}
+              />
+              <Bar dataKey="Просрок" stackId="a" fill="#fca5a5" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="6–8 день" stackId="a" fill="#fdba74" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="1–5 день" stackId="a" fill="#93c5fd" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800/80 overflow-hidden">
         {/* Toolbar */}
@@ -277,11 +364,17 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[1200px]">
+              <table className="w-full text-sm min-w-[1300px]">
                 <thead>
                   <tr className="border-b border-gray-100 dark:border-gray-800">
                     <th className={thClass} onClick={() => handleSort('id')}>
                       <div className="flex items-center gap-1.5">Номер сообщения <SortIcon field="id" /></div>
+                    </th>
+                    <th className={thClass} onClick={() => handleSort('day')}>
+                      <div className="flex items-center gap-1.5">День <SortIcon field="day" /></div>
+                    </th>
+                    <th className={thClass} onClick={() => handleSort('status')}>
+                      <div className="flex items-center gap-1.5">Статус <SortIcon field="status" /></div>
                     </th>
                     <th className={thClass} onClick={() => handleSort('publishDate')}>
                       <div className="flex items-center gap-1.5">Дата публикации <SortIcon field="publishDate" /></div>
@@ -298,12 +391,6 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
                     <th className={thClass}>Адрес</th>
                     <th className={thClass}>Проблемная тема</th>
                     <th className={thClass}>Просрок (Монитор)</th>
-                    <th className={thClass} onClick={() => handleSort('day')}>
-                      <div className="flex items-center gap-1.5">День <SortIcon field="day" /></div>
-                    </th>
-                    <th className={thClass} onClick={() => handleSort('status')}>
-                      <div className="flex items-center gap-1.5">Статус <SortIcon field="status" /></div>
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
@@ -314,19 +401,6 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
                           {issue.id}
                         </a>
                       </td>
-                      <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap text-xs">{formatDate(issue.publishDate)}</td>
-                      <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap text-xs">{issue.district || '—'}</td>
-                      <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap text-xs">{formatDate(issue.deadline)}</td>
-                      <td className="px-4 py-3 text-xs max-w-[180px]">
-                        <span className="text-gray-700 dark:text-gray-300 truncate block" title={issue.preparationStatus || ''}>{issue.preparationStatus || '—'}</span>
-                      </td>
-                      <td className="px-4 py-3 text-xs max-w-[220px]">
-                        <span className="text-gray-700 dark:text-gray-300 truncate block" title={issue.address || ''}>{issue.address || '—'}</span>
-                      </td>
-                      <td className="px-4 py-3 text-xs max-w-[200px]">
-                        <span className="text-gray-700 dark:text-gray-300 truncate block" title={issue.problem || ''}>{issue.problem || '—'}</span>
-                      </td>
-                      <td className="px-4 py-3 text-xs whitespace-nowrap">{issue.monitorOverdue}</td>
                       <td className="px-4 py-3 text-xs whitespace-nowrap">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-medium ${
                           issue.day === 'Просрок'
@@ -347,6 +421,19 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
                           {issue.status}
                         </span>
                       </td>
+                      <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap text-xs">{formatDate(issue.publishDate)}</td>
+                      <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap text-xs">{issue.district || '—'}</td>
+                      <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap text-xs">{formatDate(issue.deadline)}</td>
+                      <td className="px-4 py-3 text-xs max-w-[180px]">
+                        <span className="text-gray-700 dark:text-gray-300 truncate block" title={issue.preparationStatus || ''}>{issue.preparationStatus || '—'}</span>
+                      </td>
+                      <td className="px-4 py-3 text-xs max-w-[220px]">
+                        <span className="text-gray-700 dark:text-gray-300 truncate block" title={issue.address || ''}>{issue.address || '—'}</span>
+                      </td>
+                      <td className="px-4 py-3 text-xs max-w-[200px]">
+                        <span className="text-gray-700 dark:text-gray-300 truncate block" title={issue.problem || ''}>{issue.problem || '—'}</span>
+                      </td>
+                      <td className="px-4 py-3 text-xs whitespace-nowrap">{issue.monitorOverdue}</td>
                     </tr>
                   ))}
                 </tbody>
