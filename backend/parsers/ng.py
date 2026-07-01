@@ -1352,9 +1352,11 @@ Sub CreateReport()
     lastCol = wsData.Cells(1, wsData.Columns.Count).End(xlToLeft).Column
 
     ' Один кэш на обе сводные
+    Dim srcAddr As String
+    srcAddr = wsData.Name & "!" & wsData.Cells(1, 1).Resize(lastRow, lastCol).Address
     Set pc = ThisWorkbook.PivotCaches.Create( _
         SourceType:=xlDatabase, _
-        SourceData:=wsData.Cells(1, 1).Resize(lastRow, lastCol))
+        SourceData:=srcAddr)
 
     ' Заголовок отчёта
     With wsPivot.Range("A1")
