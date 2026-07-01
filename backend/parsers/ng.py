@@ -120,9 +120,9 @@ def choosing_day(excluded_date):
 def _sync_ng_prosrok(main_df, today_date, day_labels):
     """
     Построчно записывает текущую выгрузку "Ответы в работе" (НГ) в таблицу
-    NG_prosrok: уникально по 'Номер заявки', проставляет 'День' по правилу
-    8 рабочих дней и помечает статус 'В работе' / 'Устранено' относительно
-    предыдущей выгрузки.
+    NG_prosrok: уникально по 'Номер сообщения' (дочернее сообщение), проставляет
+    'День' по правилу 8 рабочих дней и помечает статус 'В работе' / 'Устранено'
+    относительно предыдущей выгрузки.
     """
     day_by_date = {d: label for d, label in day_labels}
     now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -161,7 +161,7 @@ def _sync_ng_prosrok(main_df, today_date, day_labels):
     current_ids = []
 
     for _, row in main_df.iterrows():
-        request_id = col(row, 'Номер заявки')
+        request_id = col(row, 'Номер сообщения')
         if not request_id:
             continue
         current_ids.append(request_id)
@@ -1543,6 +1543,7 @@ def process_lk_prefekta_file(filepath, directory, timestamp, selected_district="
 
     columns_to_keep = [
         "Номер заявки",
+        "Номер сообщения",
         "Дата отображения (Монитор)",
         "Регламентный срок у сообщения (Портал)",
         "Признак Монитора",

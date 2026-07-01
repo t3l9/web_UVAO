@@ -99,6 +99,7 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
   const [compareMode, setCompareMode] = useState(false);
   const [compareDateFrom, setCompareDateFrom] = useState('');
   const [compareDateTo, setCompareDateTo] = useState('');
+  const [showOnlyUrgent, setShowOnlyUrgent] = useState(false);
   const [sortField, setSortField] = useState<keyof NgIssue>('deadline');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -138,8 +139,9 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
     }
     if (exportDateFrom) r = r.filter(i => i.exportDate ? i.exportDate.slice(0, 10) >= exportDateFrom : false);
     if (exportDateTo)   r = r.filter(i => i.exportDate ? i.exportDate.slice(0, 10) <= exportDateTo   : false);
+    if (showOnlyUrgent) r = r.filter(i => i.day === 'Просрок' || ['6 день', '7 день', '8 день'].includes(i.day));
     return r;
-  }, [issues, selectedDistricts, idSearch, exportDateFrom, exportDateTo]);
+  }, [issues, selectedDistricts, idSearch, exportDateFrom, exportDateTo, showOnlyUrgent]);
 
   // ── Фильтрация для периода сравнения (для графика) ────────────────────────
   const compareIssues = useMemo(() => {
@@ -210,6 +212,7 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
     if (exportDateTo)   p.set('export_date_to', exportDateTo);
     if (!isAllSelected) p.set('districts', selectedDistricts.join(','));
     if (idSearch.trim()) p.set('search', idSearch.trim());
+    if (showOnlyUrgent) p.set('urgent_only', '1');
     return `/api/ng_overdue/export?${p}`;
   };
 
@@ -383,7 +386,7 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
             {compareMode && compareIssues.length > 0 && <span className="ml-2 text-xs font-normal text-gray-400">(сравнение периодов)</span>}
           </p>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData} margin={{ top: 28, right: 20, left: 0, bottom: 80 }} barCategoryGap="30%" barGap={4}>
+            <BarChart data={chartData} margin={{ top: 28, right: 20, left: 0, bottom: 100 }} barCategoryGap="30%" barGap={4}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(156,163,175,0.2)" vertical={false} />
               <XAxis
                 dataKey="name"
@@ -409,7 +412,7 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
               />
               <Legend
                 verticalAlign="bottom"
-                wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }}
+                wrapperStyle={{ fontSize: '11px', paddingTop: '28px' }}
                 iconType="circle"
                 iconSize={8}
               />
@@ -443,6 +446,18 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800/80 overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-800">
           <p className="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap flex-grow">Сообщения «Наш Город»</p>
+          <button
+            type="button"
+            onClick={() => { setShowOnlyUrgent(v => !v); setCurrentPage(1); }}
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-xl border transition-colors flex-shrink-0 ${
+              showOnlyUrgent
+                ? 'bg-red-600 text-white border-red-600 shadow-sm'
+                : 'bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900/50 hover:bg-red-100 dark:hover:bg-red-950/40'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-current inline-block" />
+            Только срочные
+          </button>
           <a href={buildExportUrl()} download
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-900/50 rounded-xl transition-colors flex-shrink-0">
             <Download className="w-3.5 h-3.5" /> Выгрузить Excel
@@ -512,7 +527,12 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
                       <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap text-xs">{formatDate(issue.publishDate)}</td>
                       <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap text-xs">{issue.district || '—'}</td>
                       <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap text-xs">{formatDate(issue.deadline)}</td>
-                      <td className="px-4 py-3 text-xs max-w-[180px]"><span className="text-gray-700 dark:text-gray-300 truncate block" title={issue.preparationStatus || ''}>{issue.preparationStatus || '—'}</span></td>
+                      <td className="px-4 py-3 text-xs max-w-[180px]">
+                        {issue.status === 'Устранено'
+                          ? <span className="text-emerald-700 dark:text-emerald-400 font-medium">Опубликовано</span>
+                          : <span className="text-gray-700 dark:text-gray-300 truncate block" title={issue.preparationStatus || ''}>{issue.preparationStatus || '—'}</span>
+                        }
+                      </td>
                       <td className="px-4 py-3 text-xs max-w-[220px]"><span className="text-gray-700 dark:text-gray-300 truncate block" title={issue.address || ''}>{issue.address || '—'}</span></td>
                       <td className="px-4 py-3 text-xs max-w-[200px]"><span className="text-gray-700 dark:text-gray-300 truncate block" title={issue.problem || ''}>{issue.problem || '—'}</span></td>
                       <td className="px-4 py-3 text-xs whitespace-nowrap">{issue.monitorOverdue}</td>

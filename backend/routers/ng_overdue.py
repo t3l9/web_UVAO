@@ -61,6 +61,7 @@ def export_ng_overdue(
     export_date_to: Optional[str] = Query(None),
     districts: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
+    urgent_only: Optional[str] = Query(None),
 ):
     conn = None
     try:
@@ -85,6 +86,8 @@ def export_ng_overdue(
         if search:
             conditions.append("ID LIKE ?")
             params.append(f'%{search}%')
+        if urgent_only == '1':
+            conditions.append("Day IN ('Просрок', '6 день', '7 день', '8 день')")
 
         where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
