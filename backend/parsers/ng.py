@@ -1182,7 +1182,7 @@ def add_run_delete_and_save_files(timestamp):
     today = datetime.now()
     timenow = today.strftime("%H-%M")
     file_path = os.path.join(directory, f"Ответы в работе {timestamp}.xlsx")
-    excel = win32com.client.Dispatch('Excel.Application')
+    excel = win32com.client.DispatchEx('Excel.Application')
     excel.Visible = False
     excel.DisplayAlerts = False
 
@@ -1591,7 +1591,7 @@ def process_lk_prefekta_file(filepath, directory, timestamp, selected_district="
 
 
     # Запускаем Excel
-    excel = win32com.client.Dispatch('Excel.Application')
+    excel = win32com.client.DispatchEx('Excel.Application')
     excel.Visible = False
     excel.DisplayAlerts = False
 
