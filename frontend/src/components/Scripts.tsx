@@ -6,8 +6,6 @@ import {
   FileText, AlertCircle, RotateCcw, BookOpen,
 } from 'lucide-react';
 
-// ─── Copy hook ────────────────────────────────────────────────────────────────
-
 function useCopy() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const copy = (text: string, id: string) => {
@@ -18,8 +16,6 @@ function useCopy() {
   };
   return { copiedId, copy };
 }
-
-// ─── FilterStep ───────────────────────────────────────────────────────────────
 
 interface FilterStepProps {
   step: number;
@@ -86,20 +82,14 @@ function FilterStep({ step, label, options, value, onSelect }: FilterStepProps) 
   );
 }
 
-// ─── ScriptCard ───────────────────────────────────────────────────────────────
-
 interface ScriptCardProps {
   script: Script;
-  expanded: boolean;
-  onToggle: () => void;
   copiedId: string | null;
   onCopy: (text: string, id: string) => void;
 }
 
-function ScriptCard({ script, expanded, onToggle, copiedId, onCopy }: ScriptCardProps) {
+function ScriptCard({ script, copiedId, onCopy }: ScriptCardProps) {
   const copyId = `resp-${script.id}`;
-  const PREVIEW = 200;
-  const hasMore = (script.response?.length ?? 0) > PREVIEW;
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800/80 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
@@ -135,7 +125,7 @@ function ScriptCard({ script, expanded, onToggle, copiedId, onCopy }: ScriptCard
           )}
         </div>
 
-        {/* Response block */}
+        {/* Response block — always fully visible */}
         {script.response && (
           <div className="bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-100 dark:border-gray-700/50 overflow-hidden">
             <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-gray-100 dark:border-gray-700/50">
@@ -158,25 +148,16 @@ function ScriptCard({ script, expanded, onToggle, copiedId, onCopy }: ScriptCard
               </button>
             </div>
             <div className="px-4 py-3">
-              <p className={`text-sm text-gray-800 dark:text-gray-300 leading-relaxed whitespace-pre-wrap ${!expanded && hasMore ? 'line-clamp-4' : ''}`}>
+              <p className="text-sm text-gray-800 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
                 {script.response}
               </p>
-              {hasMore && (
-                <button
-                  type="button"
-                  onClick={onToggle}
-                  className="mt-2 text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline"
-                >
-                  {expanded ? 'Свернуть' : 'Показать полностью →'}
-                </button>
-              )}
             </div>
           </div>
         )}
 
-        {/* Extra info – only when expanded */}
-        {expanded && (script.documents || script.notes || script.category) && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 animate-fade-in">
+        {/* Extra info — always visible */}
+        {(script.documents || script.notes || script.category) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
             {script.category && (
               <div>
                 <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">
@@ -208,8 +189,6 @@ function ScriptCard({ script, expanded, onToggle, copiedId, onCopy }: ScriptCard
   );
 }
 
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
-
 function SkeletonCard() {
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800/80 overflow-hidden animate-pulse">
@@ -222,7 +201,7 @@ function SkeletonCard() {
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+const SHOW_STEP = 30;
 
 function Scripts() {
   const [scripts, setScripts] = useState<Script[]>([]);
@@ -235,10 +214,9 @@ function Scripts() {
     problem: '',
     work: '',
   });
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(SHOW_STEP);
   const { copiedId, copy } = useCopy();
 
-  // ── Load Excel ───────────────────────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
       try {
@@ -268,7 +246,6 @@ function Scripts() {
     load();
   }, []);
 
-  // ── Cascading filter options ──────────────────────────────────────────────────
   const options = useMemo(() => {
     const sort = (arr: string[]) => [...arr].sort((a, b) => a.localeCompare(b, 'ru'));
 
@@ -292,7 +269,6 @@ function Scripts() {
     return { controlObjects, statuses, problems, works };
   }, [scripts, filters.controlObject, filters.status, filters.problem]);
 
-  // ── Filtered results ──────────────────────────────────────────────────────────
   const results = useMemo(() => {
     let f = scripts;
     if (filters.controlObject) f = f.filter(s => s.controlObject === filters.controlObject);
@@ -306,26 +282,27 @@ function Scripts() {
         s.problem?.toLowerCase().includes(q) ||
         s.controlObject?.toLowerCase().includes(q) ||
         s.id?.toLowerCase().includes(q) ||
-        s.notes?.toLowerCase().includes(q)
+        s.notes?.toLowerCase().includes(q) ||
+        s.work?.toLowerCase().includes(q) ||
+        s.category?.toLowerCase().includes(q)
       );
     }
     return f;
   }, [scripts, filters, searchQuery]);
 
-  // ── Helpers ───────────────────────────────────────────────────────────────────
   const setFilter = (key: keyof ScriptFilter, value: string) => {
     const order: (keyof ScriptFilter)[] = ['controlObject', 'status', 'problem', 'work'];
     const idx = order.indexOf(key);
     const next = { ...filters, [key]: value };
     for (let i = idx + 1; i < order.length; i++) next[order[i]] = '';
     setFilters(next);
-    setExpandedId(null);
+    setVisibleCount(SHOW_STEP);
   };
 
   const reset = () => {
     setFilters({ controlObject: '', status: '', problem: '', work: '' });
     setSearchQuery('');
-    setExpandedId(null);
+    setVisibleCount(SHOW_STEP);
   };
 
   const hasFilters = Object.values(filters).some(Boolean) || searchQuery;
@@ -337,7 +314,6 @@ function Scripts() {
     return 'скриптов';
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Header */}
@@ -366,14 +342,14 @@ function Scripts() {
         <input
           type="text"
           value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Поиск по тексту ответа, проблеме, объекту, ID..."
+          onChange={e => { setSearchQuery(e.target.value); setVisibleCount(SHOW_STEP); }}
+          placeholder="Поиск по тексту ответа, проблеме, объекту, работам, ID..."
           className="w-full pl-11 pr-10 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-primary-400 dark:focus:border-primary-500 transition-colors shadow-sm"
         />
         {searchQuery && (
           <button
             type="button"
-            onClick={() => setSearchQuery('')}
+            onClick={() => { setSearchQuery(''); setVisibleCount(SHOW_STEP); }}
             className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
             <X className="w-4 h-4 text-gray-400" />
@@ -461,20 +437,34 @@ function Scripts() {
                 {results.length}
               </span>{' '}
               {plural(results.length)}
+              {results.length > visibleCount && (
+                <span className="text-gray-400 dark:text-gray-500">
+                  {' '}· показано {visibleCount}
+                </span>
+              )}
             </p>
           </div>
 
           {results.length > 0 ? (
-            results.map(script => (
-              <ScriptCard
-                key={script.id}
-                script={script}
-                expanded={expandedId === script.id}
-                onToggle={() => setExpandedId(expandedId === script.id ? null : script.id)}
-                copiedId={copiedId}
-                onCopy={copy}
-              />
-            ))
+            <>
+              {results.slice(0, visibleCount).map(script => (
+                <ScriptCard
+                  key={script.id}
+                  script={script}
+                  copiedId={copiedId}
+                  onCopy={copy}
+                />
+              ))}
+              {results.length > visibleCount && (
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount(v => v + SHOW_STEP)}
+                  className="w-full py-3 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-500 dark:text-gray-400 hover:border-primary-400 dark:hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                >
+                  Показать ещё {Math.min(SHOW_STEP, results.length - visibleCount)} из {results.length - visibleCount} оставшихся
+                </button>
+              )}
+            </>
           ) : (
             <div className="flex flex-col items-center justify-center py-16 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800/80 gap-3">
               <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center">
@@ -495,7 +485,7 @@ function Scripts() {
         </div>
       )}
 
-      {/* Idle state — nothing selected */}
+      {/* Idle state */}
       {!showResults && !loading && !error && (
         <div className="flex flex-col items-center justify-center py-14 gap-3 text-center">
           <div className="w-14 h-14 bg-primary-50 dark:bg-primary-950/30 rounded-2xl flex items-center justify-center">
