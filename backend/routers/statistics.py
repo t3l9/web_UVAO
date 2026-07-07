@@ -52,7 +52,7 @@ def get_transfer_statistics(
         conn_bot.close()
 
         print("=== ПОЛУЧЕНИЕ ПЕРЕНОСОВ ЧЕРЕЗ НГ ===")
-        conn_ng = sqlite3.connect(DATABASE_PATH)
+        conn_ng = sqlite3.connect(DATABASE_PATH, timeout=30)
         cursor_ng = conn_ng.cursor()
 
         start_date_ng = start_dt.strftime('%d.%m.%Y')
@@ -277,7 +277,7 @@ def export_transfer_statistics(
             bot_transfers = {row[0]: row[1] for row in bot_results}
             conn_bot.close()
 
-            conn_ng = sqlite3.connect(DATABASE_PATH)
+            conn_ng = sqlite3.connect(DATABASE_PATH, timeout=30)
             cursor_ng = conn_ng.cursor()
 
             start_dt = datetime.strptime(start_date, '%Y-%m-%d')
@@ -359,7 +359,7 @@ def export_transfer_statistics(
             df = pd.DataFrame(data, columns=['ID заявки', 'Район', 'Тип переноса', 'Дата переноса', 'Дата создания'])
 
         elif export_type == 'ng':
-            conn_ng = sqlite3.connect(DATABASE_PATH)
+            conn_ng = sqlite3.connect(DATABASE_PATH, timeout=30)
             cursor_ng = conn_ng.cursor()
 
             start_dt = datetime.strptime(start_date, '%Y-%m-%d')
@@ -400,7 +400,7 @@ def export_transfer_statistics(
             bot_data = cursor_bot.fetchall()
             conn_bot.close()
 
-            conn_ng = sqlite3.connect(DATABASE_PATH)
+            conn_ng = sqlite3.connect(DATABASE_PATH, timeout=30)
             cursor_ng = conn_ng.cursor()
 
             start_dt = datetime.strptime(start_date, '%Y-%m-%d')
@@ -466,7 +466,7 @@ def get_chart_data(
     overdue_only: bool = Query(False),
 ):
     try:
-        conn = sqlite3.connect(DATABASE_PATH)
+        conn = sqlite3.connect(DATABASE_PATH, timeout=30)
         cursor = conn.cursor()
 
         query = """
@@ -540,7 +540,7 @@ def get_chart_data(
 @router.get('/api/chart_filters')
 def get_chart_filters():
     try:
-        conn = sqlite3.connect(DATABASE_PATH)
+        conn = sqlite3.connect(DATABASE_PATH, timeout=30)
         cursor = conn.cursor()
 
         cursor.execute("SELECT DISTINCT Problem FROM MM_prosrok WHERE Problem IS NOT NULL ORDER BY Problem")
@@ -559,7 +559,7 @@ def get_chart_filters():
 @router.get('/api/date_range')
 def get_date_range():
     try:
-        conn = sqlite3.connect(DATABASE_PATH)
+        conn = sqlite3.connect(DATABASE_PATH, timeout=30)
         cursor = conn.cursor()
 
         cursor.execute("SELECT MIN(DATE(Deadline)), MAX(DATE(Deadline)) FROM MM_prosrok")

@@ -701,7 +701,9 @@ def _sync_mm_data(df, timenow: str) -> None:
     import sqlite3
     from ..config import DATABASE_PATH
 
-    conn = sqlite3.connect(DATABASE_PATH)
+    # timeout=30 чтобы не падать с "database is locked" при параллельных запросах
+    conn = sqlite3.connect(DATABASE_PATH, timeout=30)
+    conn.execute("PRAGMA journal_mode=WAL")
     cur = conn.cursor()
 
     cur.execute("""
@@ -712,6 +714,7 @@ def _sync_mm_data(df, timenow: str) -> None:
             Problem       TEXT,
             Resource      TEXT,
             Status        TEXT,
+            OIV           TEXT,
             Address       TEXT,
             ControlObject TEXT,
             ExportDate    TEXT,
@@ -719,7 +722,13 @@ def _sync_mm_data(df, timenow: str) -> None:
         )
     """)
 
-    for col, coltype in [("Address", "TEXT"), ("ControlObject", "TEXT"), ("ExportDate", "TEXT"), ("IsOverdue", "TEXT")]:
+    for col, coltype in [
+        ("OIV",           "TEXT"),
+        ("Address",       "TEXT"),
+        ("ControlObject", "TEXT"),
+        ("ExportDate",    "TEXT"),
+        ("IsOverdue",     "TEXT"),
+    ]:
         try:
             cur.execute(f"ALTER TABLE MM_prosrok ADD COLUMN {col} {coltype}")
         except Exception:
@@ -733,45 +742,56 @@ def _sync_mm_data(df, timenow: str) -> None:
         conn.close()
         return
 
+    def _str(val):
+        return str(val).strip() if pd.notna(val) else None
+
     rows_upserted = 0
+    batch = []
     for _, row in df.iterrows():
         issue_id = str(row.get(id_col, "")).strip()
         if not issue_id or issue_id in ("nan", "None", ""):
             continue
 
-        # Deadline: уже pd.Timestamp после process_file_MM
         deadline_val = row.get("Срок устранения до")
         try:
             deadline = pd.Timestamp(deadline_val).strftime("%Y-%m-%d") if pd.notna(deadline_val) else None
         except Exception:
             deadline = None
 
-        def _str(val):
-            return str(val).strip() if pd.notna(val) else None
+        # OIV может быть в разных столбцах, пробуем варианты
+        oiv = _str(row.get("ОИВ")) or _str(row.get("Ответственный ОИВ")) or ""
 
-        district    = _str(row.get("Район"))
-        problem     = _str(row.get("Проблема"))
-        resource    = _str(row.get("Балансодержатель"))
-        status      = _str(row.get("Статус в системе"))
-        address     = _str(row.get("Адрес"))
-        ctrl_obj    = _str(row.get("Объект контроля"))
-        is_overdue  = _str(row.get("Просрок"))
-
-        cur.execute("""
-            INSERT INTO MM_prosrok (ID, Deadline, District, Problem, Resource, Status, Address, ControlObject, ExportDate, IsOverdue)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(ID) DO UPDATE SET
-                Deadline      = excluded.Deadline,
-                District      = excluded.District,
-                Problem       = excluded.Problem,
-                Resource      = excluded.Resource,
-                Status        = excluded.Status,
-                Address       = excluded.Address,
-                ControlObject = excluded.ControlObject,
-                ExportDate    = excluded.ExportDate,
-                IsOverdue     = excluded.IsOverdue
-        """, (issue_id, deadline, district, problem, resource, status, address, ctrl_obj, timenow, is_overdue))
+        batch.append((
+            issue_id,
+            deadline,
+            _str(row.get("Район")),
+            _str(row.get("Проблема")),
+            _str(row.get("Балансодержатель")),
+            _str(row.get("Статус в системе")),
+            oiv,
+            _str(row.get("Адрес")),
+            _str(row.get("Объект контроля")),
+            timenow,
+            _str(row.get("Просрок")),
+        ))
         rows_upserted += 1
+
+    cur.executemany("""
+        INSERT INTO MM_prosrok
+            (ID, Deadline, District, Problem, Resource, Status, OIV, Address, ControlObject, ExportDate, IsOverdue)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(ID) DO UPDATE SET
+            Deadline      = excluded.Deadline,
+            District      = excluded.District,
+            Problem       = excluded.Problem,
+            Resource      = excluded.Resource,
+            Status        = excluded.Status,
+            OIV           = excluded.OIV,
+            Address       = excluded.Address,
+            ControlObject = excluded.ControlObject,
+            ExportDate    = excluded.ExportDate,
+            IsOverdue     = excluded.IsOverdue
+    """, batch)
 
     conn.commit()
     conn.close()

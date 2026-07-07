@@ -18,7 +18,8 @@ def update_last_visit(
 ):
     conn = None
     try:
-        conn = sqlite3.connect(DATABASE_PATH)
+        conn = sqlite3.connect(DATABASE_PATH, timeout=30)
+        conn.execute("PRAGMA journal_mode=WAL")
         cursor = conn.cursor()
 
         cursor.execute('SELECT ID FROM Users WHERE ID = ?', (body.userId,))
@@ -46,7 +47,8 @@ def delete_overdue(
 ):
     conn = None
     try:
-        conn = sqlite3.connect(DATABASE_PATH)
+        conn = sqlite3.connect(DATABASE_PATH, timeout=30)
+        conn.execute("PRAGMA journal_mode=WAL")
         cursor = conn.cursor()
 
         cursor.execute('SELECT ID FROM MM_prosrok WHERE ID = ?', (request_id,))
