@@ -463,6 +463,7 @@ def get_chart_data(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
     problem_topic: Optional[str] = Query(None),
+    overdue_only: bool = Query(False),
 ):
     try:
         conn = sqlite3.connect(DATABASE_PATH)
@@ -475,12 +476,17 @@ def get_chart_data(
             District as region_id,
             Problem as theme,
             Resource,
-            Status
+            Status,
+            Address,
+            ControlObject
         FROM MM_prosrok
         WHERE 1=1
         """
 
         params = []
+
+        if overdue_only:
+            query += " AND IsOverdue = 'Да'"
 
         if start_date:
             query += " AND DATE(Deadline) >= ?"
@@ -507,7 +513,9 @@ def get_chart_data(
                 "region_id": row[2],
                 "theme": row[3],
                 "Resource": row[4],
-                "status": row[5]
+                "status": row[5],
+                "address": row[6],
+                "controlObject": row[7],
             }
 
             if date_str not in data_by_date:

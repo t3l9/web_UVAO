@@ -10,6 +10,8 @@ interface Issue {
   theme: string;
   Resource: string;
   status: string;
+  address: string;
+  controlObject: string;
 }
 
 interface DetailedIssuesTableProps {
@@ -50,6 +52,8 @@ const DetailedIssuesTable: React.FC<DetailedIssuesTableProps> = ({
         theme: i.theme,
         Resource: i.Resource || 'Не указан',
         status: i.status || 'В работе',
+        address: i.address || '',
+        controlObject: i.controlObject || '',
       }))
     ).filter((i: Issue) => selectedDistricts.includes(i.region_id));
   }, [displayData, selectedDistricts]);
@@ -126,6 +130,8 @@ const DetailedIssuesTable: React.FC<DetailedIssuesTableProps> = ({
     'Проблема': i.theme,
     'Система-источник': i.Resource,
     'Статус': i.status,
+    'Адрес': i.address || '',
+    'Объект контроля': i.controlObject || '',
     'Ссылка': isNgOrMzhi(i.Resource) ? ngLink(i.ID) : isCafapOati(i.Resource) ? cafapLink(i.ID) : 'Нет ссылки',
   });
 
@@ -141,7 +147,7 @@ const DetailedIssuesTable: React.FC<DetailedIssuesTableProps> = ({
       source.flatMap(d =>
         d.issues
           .filter((i: any) => selectedDistricts.includes(i.region_id))
-          .map((i: any) => buildExcelRow({ ID: i.ID || 'N/A', date: i.date, region_id: i.region_id, theme: i.theme, Resource: i.Resource || 'Не указан', status: i.status || 'В работе' }))
+          .map((i: any) => buildExcelRow({ ID: i.ID || 'N/A', date: i.date, region_id: i.region_id, theme: i.theme, Resource: i.Resource || 'Не указан', status: i.status || 'В работе', address: i.address || '', controlObject: i.controlObject || '' }))
       );
     const reportRows = toRows(data);
     const baseRows = toRows(baseData);
@@ -248,6 +254,12 @@ const DetailedIssuesTable: React.FC<DetailedIssuesTableProps> = ({
               <th className={thClass} onClick={() => handleSort('status')}>
                 <div className="flex items-center gap-1.5">Статус <SortIcon field="status" /></div>
               </th>
+              <th className={thClass} onClick={() => handleSort('address')}>
+                <div className="flex items-center gap-1.5">Адрес <SortIcon field="address" /></div>
+              </th>
+              <th className={thClass} onClick={() => handleSort('controlObject')}>
+                <div className="flex items-center gap-1.5">Объект контроля <SortIcon field="controlObject" /></div>
+              </th>
               {isAdmin && (
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-800/50">
                   Действия
@@ -297,6 +309,12 @@ const DetailedIssuesTable: React.FC<DetailedIssuesTableProps> = ({
                   }`}>
                     {issue.status}
                   </span>
+                </td>
+                <td className="px-4 py-3 text-xs max-w-[200px]">
+                  <span className="text-gray-700 dark:text-gray-300 truncate block" title={issue.address}>{issue.address || '—'}</span>
+                </td>
+                <td className="px-4 py-3 text-xs max-w-[180px]">
+                  <span className="text-gray-700 dark:text-gray-300 truncate block" title={issue.controlObject}>{issue.controlObject || '—'}</span>
                 </td>
                 {isAdmin && (
                   <td className="px-4 py-3">

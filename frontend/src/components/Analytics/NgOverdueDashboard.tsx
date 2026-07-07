@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowLeft, ListChecks, Lock, AlertCircle, Search, X,
+  ArrowLeft, ListChecks, AlertCircle, Search, X,
   ArrowUp, ArrowDown, ChevronsUpDown, Download, CalendarDays, GitCompare,
 } from 'lucide-react';
 import {
@@ -234,18 +234,6 @@ function NgOverdueDashboard({ user }: NgOverdueDashboardProps) {
   };
 
   const thCls = "px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-800/50 cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none whitespace-nowrap";
-
-  // ── Гарды доступа / загрузки ──────────────────────────────────────────────
-  if (user.duty !== 'Префектура') {
-    return (
-      <div className="flex items-start gap-3 px-4 py-3 bg-red-50 dark:bg-red-950/30 rounded-2xl border border-red-100 dark:border-red-900/50">
-        <div className="w-7 h-7 bg-red-100 dark:bg-red-900/60 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-          <Lock className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
-        </div>
-        <p className="text-sm text-red-700 dark:text-red-300">Раздел доступен только для сотрудников Префектуры.</p>
-      </div>
-    );
-  }
 
   if (loading) {
     return (

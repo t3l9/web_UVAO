@@ -35,11 +35,11 @@ const toolNavItems: NavItemDef[] = [
   { to: '/knowledge', label: 'База знаний', icon: BookOpen },
 ];
 
-const analyticsNavItems: NavItemDef[] = [
-  { to: '/analytics/archive', label: 'Архив отчетов', icon: Archive },
-  { to: '/analytics/dashboard', label: 'Дашборд ЮВАО', icon: LineChart },
+const analyticsNavItems: (NavItemDef & { prefectOnly?: boolean })[] = [
+  { to: '/analytics/archive', label: 'Архив отчетов', icon: Archive, prefectOnly: true },
+  { to: '/analytics/dashboard', label: 'Дашборд ММ', icon: LineChart },
   { to: '/analytics/ng-overdue', label: 'Дашборд НГ', icon: ListChecks },
-  { to: '/analytics/transfer-statistics', label: 'Статистика переносов', icon: BarChart3 },
+  { to: '/analytics/transfer-statistics', label: 'Статистика переносов', icon: BarChart3, prefectOnly: true },
 ];
 
 const externalLinks = [
@@ -171,13 +171,13 @@ function Layout({ user, onLogout }: LayoutProps) {
             ))}
           </NavGroup>
 
-          {user.duty === 'Префектура' && (
-            <NavGroup label="Аналитика">
-              {analyticsNavItems.map(item => (
+          <NavGroup label="Аналитика">
+            {analyticsNavItems
+              .filter(item => !item.prefectOnly || user.duty === 'Префектура')
+              .map(item => (
                 <SidebarNavItem key={item.to} {...item} isActive={isActive(item.to)} onClick={closeSidebar} />
               ))}
-            </NavGroup>
-          )}
+          </NavGroup>
 
           <NavGroup label="Внешние ресурсы">
             {externalLinks.map(link => (

@@ -18,8 +18,8 @@ function Analytics({ user }: AnalyticsProps) {
     },
     {
       id: 'dashboard',
-      title: 'Дашборд',
-      description: 'Визуализация данных и статистика по обращениям граждан в интерактивном формате',
+      title: 'Дашборд ММ',
+      description: 'Визуализация данных и статистика Монитора Мэра по обращениям граждан',
       icon: LineChart,
       requiresPrefecture: true,
     },

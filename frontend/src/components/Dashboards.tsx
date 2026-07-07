@@ -112,13 +112,15 @@ const analyticsSections = [
     description: 'Исторические данные для аналитики',
     icon: Archive,
     iconClass: 'bg-violet-100 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400',
+    prefectOnly: true,
   },
   {
     id: 'dashboard',
-    title: 'Дашборд просроков',
-    description: 'Визуализация и статистика просроков ЮВАО',
+    title: 'Дашборд ММ',
+    description: 'Визуализация и статистика Монитора Мэра',
     icon: LineChart,
     iconClass: 'bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400',
+    prefectOnly: false,
   },
   {
     id: 'transfer-statistics',
@@ -126,6 +128,7 @@ const analyticsSections = [
     description: 'Сравнение переносов через бота и фактических',
     icon: BarChart3,
     iconClass: 'bg-indigo-100 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400',
+    prefectOnly: true,
   },
   {
     id: 'ng-overdue',
@@ -133,6 +136,7 @@ const analyticsSections = [
     description: 'Сообщения НГ в работе, день по правилу 8 дней и статус устранения',
     icon: ListChecks,
     iconClass: 'bg-violet-100 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400',
+    prefectOnly: false,
   },
 ];
 
@@ -279,7 +283,7 @@ function Dashboard({ user }: DashboardProps) {
       </section>
 
       {/* ─── Tools + Analytics ──────────────────────────────── */}
-      <div className={`grid grid-cols-1 gap-8 ${user.duty === 'Префектура' ? 'lg:grid-cols-2' : ''}`}>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
 
         <section>
           <SectionHeader label="Инструменты и ресурсы" />
@@ -331,11 +335,12 @@ function Dashboard({ user }: DashboardProps) {
           </div>
         </section>
 
-        {user.duty === 'Префектура' && (
-          <section>
-            <SectionHeader label="Аналитика" />
-            <div className="space-y-3">
-              {analyticsSections.map(section => (
+        <section>
+          <SectionHeader label="Аналитика" />
+          <div className="space-y-3">
+            {analyticsSections
+              .filter(section => !section.prefectOnly || user.duty === 'Префектура')
+              .map(section => (
                 <Link
                   key={section.id}
                   to={`/analytics/${section.id}`}
@@ -353,9 +358,8 @@ function Dashboard({ user }: DashboardProps) {
                   <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-primary-400 group-hover:translate-x-0.5 transition-all duration-200 flex-shrink-0" />
                 </Link>
               ))}
-            </div>
-          </section>
-        )}
+          </div>
+        </section>
       </div>
 
       {/* ─── FAQ ────────────────────────────────────────────── */}

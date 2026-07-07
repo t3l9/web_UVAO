@@ -421,7 +421,7 @@ def process_file_MM(filepath: str, timenow: str):
 
     if not WIN32COM_AVAILABLE:
         print("win32com недоступен — PDF и сводные таблицы не будут созданы.")
-        return processed_file_path, None
+        return processed_file_path, None, df
 
     vba_macro = _vba_pivot1()
     vba_macro2 = _vba_pivot2()
@@ -450,7 +450,7 @@ def process_file_MM(filepath: str, timenow: str):
     workbook.Close()
     excel.Quit()
 
-    return processed_file_path, pdf_path
+    return processed_file_path, pdf_path, df
 
 
 # ──────────────────────────────────────────────
@@ -693,6 +693,92 @@ End Sub
 
 
 # ──────────────────────────────────────────────
+# Синхронизация в БД
+# ──────────────────────────────────────────────
+
+def _sync_mm_data(df, timenow: str) -> None:
+    """Сохраняет все строки выгрузки ММ в таблицу MM_prosrok (UPSERT по ID нарушения)."""
+    import sqlite3
+    from ..config import DATABASE_PATH
+
+    conn = sqlite3.connect(DATABASE_PATH)
+    cur = conn.cursor()
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS MM_prosrok (
+            ID            TEXT PRIMARY KEY,
+            Deadline      TEXT,
+            District      TEXT,
+            Problem       TEXT,
+            Resource      TEXT,
+            Status        TEXT,
+            Address       TEXT,
+            ControlObject TEXT,
+            ExportDate    TEXT,
+            IsOverdue     TEXT
+        )
+    """)
+
+    for col, coltype in [("Address", "TEXT"), ("ControlObject", "TEXT"), ("ExportDate", "TEXT"), ("IsOverdue", "TEXT")]:
+        try:
+            cur.execute(f"ALTER TABLE MM_prosrok ADD COLUMN {col} {coltype}")
+        except Exception:
+            pass  # столбец уже существует
+
+    conn.commit()
+
+    id_col = "ID нарушения"
+    if id_col not in df.columns:
+        print(f"[mm_sync] Столбец '{id_col}' не найден в выгрузке — синхронизация пропущена")
+        conn.close()
+        return
+
+    rows_upserted = 0
+    for _, row in df.iterrows():
+        issue_id = str(row.get(id_col, "")).strip()
+        if not issue_id or issue_id in ("nan", "None", ""):
+            continue
+
+        # Deadline: уже pd.Timestamp после process_file_MM
+        deadline_val = row.get("Срок устранения до")
+        try:
+            deadline = pd.Timestamp(deadline_val).strftime("%Y-%m-%d") if pd.notna(deadline_val) else None
+        except Exception:
+            deadline = None
+
+        def _str(val):
+            return str(val).strip() if pd.notna(val) else None
+
+        district    = _str(row.get("Район"))
+        problem     = _str(row.get("Проблема"))
+        resource    = _str(row.get("Балансодержатель"))
+        status      = _str(row.get("Статус в системе"))
+        address     = _str(row.get("Адрес"))
+        ctrl_obj    = _str(row.get("Объект контроля"))
+        is_overdue  = _str(row.get("Просрок"))
+
+        cur.execute("""
+            INSERT INTO MM_prosrok (ID, Deadline, District, Problem, Resource, Status, Address, ControlObject, ExportDate, IsOverdue)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(ID) DO UPDATE SET
+                Deadline      = excluded.Deadline,
+                District      = excluded.District,
+                Problem       = excluded.Problem,
+                Resource      = excluded.Resource,
+                Status        = excluded.Status,
+                Address       = excluded.Address,
+                ControlObject = excluded.ControlObject,
+                ExportDate    = excluded.ExportDate,
+                IsOverdue     = excluded.IsOverdue
+        """, (issue_id, deadline, district, problem, resource, status, address, ctrl_obj, timenow, is_overdue))
+        rows_upserted += 1
+
+    conn.commit()
+    conn.close()
+    print(f"[mm_sync] Синхронизировано строк: {rows_upserted}")
+
+
+# ──────────────────────────────────────────────
 # Точка входа для планировщика
 # ──────────────────────────────────────────────
 
@@ -732,7 +818,8 @@ def mm(scheduled_time=None):
             return
         latest_file = os.path.join(directory, files[-1])
 
-        processed_path, pdf_path = process_file_MM(latest_file, timenow)
+        processed_path, pdf_path, df_mm = process_file_MM(latest_file, timenow)
+        _sync_mm_data(df_mm, timenow)
 
         static_directory = os.path.join(BASE_DIR, "MM")
         os.makedirs(static_directory, exist_ok=True)
