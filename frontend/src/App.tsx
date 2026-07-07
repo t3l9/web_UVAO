@@ -1,22 +1,35 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { User } from './types';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { Clock } from 'lucide-react';
 import Login from './components/Login';
 import Layout from './components/Layout';
-import Dashboard from './components/Dashboards';
-import ReportViewer from './components/ReportViewer';
-import Scripts from './components/Scripts';
-import Knowledge from './components/Knowledge';
-import ArchiveReports from './components/Analytics/ArchiveReports';
-import AnalyticsDashboard from './components/Analytics/Dashboard';
-import NgOverdueDashboard from './components/Analytics/NgOverdueDashboard';
-import TransferStatisticsReport from './components/TransferStatisticsReport';
-import AdminPanel from './components/AdminPanel';
 import axios, { AxiosError } from 'axios';
 import api, { setToken, clearToken } from './utils/api';
 import debounce from 'lodash.debounce';
+
+// Ленивая загрузка — каждая страница грузится только при переходе на неё
+const Dashboard               = lazy(() => import('./components/Dashboards'));
+const ReportViewer            = lazy(() => import('./components/ReportViewer'));
+const Scripts                 = lazy(() => import('./components/Scripts'));
+const Knowledge               = lazy(() => import('./components/Knowledge'));
+const ArchiveReports          = lazy(() => import('./components/Analytics/ArchiveReports'));
+const AnalyticsDashboard      = lazy(() => import('./components/Analytics/Dashboard'));
+const NgOverdueDashboard      = lazy(() => import('./components/Analytics/NgOverdueDashboard'));
+const TransferStatisticsReport = lazy(() => import('./components/TransferStatisticsReport'));
+const AdminPanel              = lazy(() => import('./components/AdminPanel'));
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="relative w-9 h-9">
+        <div className="absolute inset-0 rounded-full border-[3px] border-gray-200 dark:border-gray-700" />
+        <div className="absolute inset-0 rounded-full border-[3px] border-primary-500 border-t-transparent animate-spin" />
+      </div>
+    </div>
+  );
+}
 
 function App() {
   const [user, setUser] = useState<User | null>(() => {
@@ -139,21 +152,23 @@ function App() {
   return (
     <ThemeProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Layout user={user} onLogout={handleLogout} />}>
-            <Route index element={<Dashboard user={user} />} />
-            <Route path="report/:type" element={<ReportViewer user={user} />} />
-            <Route path="scripts" element={<Scripts />} />
-            <Route path="knowledge" element={<Knowledge user={user} />} />
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/" element={<Layout user={user} onLogout={handleLogout} />}>
+              <Route index element={<Dashboard user={user} />} />
+              <Route path="report/:type" element={<ReportViewer user={user} />} />
+              <Route path="scripts" element={<Scripts />} />
+              <Route path="knowledge" element={<Knowledge user={user} />} />
 
-            <Route path="analytics/archive" element={<ArchiveReports user={user} />} />
-            <Route path="analytics/dashboard" element={<AnalyticsDashboard user={user} />} />
-            <Route path="analytics/ng-overdue" element={<NgOverdueDashboard user={user} />} />
-            <Route path="analytics/transfer-statistics" element={<TransferStatisticsReport />} />
-            <Route path="admin" element={<AdminPanel />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        </Routes>
+              <Route path="analytics/archive" element={<ArchiveReports user={user} />} />
+              <Route path="analytics/dashboard" element={<AnalyticsDashboard user={user} />} />
+              <Route path="analytics/ng-overdue" element={<NgOverdueDashboard user={user} />} />
+              <Route path="analytics/transfer-statistics" element={<TransferStatisticsReport />} />
+              <Route path="admin" element={<AdminPanel />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </ThemeProvider>
   );

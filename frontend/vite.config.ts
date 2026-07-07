@@ -35,11 +35,16 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'react-pdf': ['react-pdf'],
+          'vendor-react':  ['react', 'react-dom', 'react-router-dom'],
+          'vendor-charts': ['recharts'],
+          'vendor-pdf':    ['react-pdf'],
+          'vendor-xlsx':   ['xlsx'],
+          'vendor-ui':     ['react-datepicker', 'lucide-react'],
         },
       },
     },
     target: 'esnext',
+    chunkSizeWarningLimit: 800,
   },
   worker: {
     format: 'es',
