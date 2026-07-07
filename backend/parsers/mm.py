@@ -74,11 +74,11 @@ def parcing_data_MM_sync(MM_start_date: str, MM_end_date: str,
 
 
         WebDriverWait(driver, 20).until(EC.presence_of_element_located(
-            (By.XPATH, "/html/body/div[1]/div/section/section/main/div[2]/div[1]/div[2]/span[1]")))
+            (By.XPATH, "/html/body/div/div/section/section/main/div/div[1]/div[2]/span[1]")))
         time.sleep(0.3)
 
         driver.find_element(By.XPATH,
-            "/html/body/div[1]/div/section/section/main/div[2]/div[1]/div[2]/span[1]").click()
+            "/html/body/div/div/section/section/main/div/div[1]/div[2]/span[1]").click()
 
         driver.find_element(By.XPATH,
             "/html/body/div[2]/div/div[2]/div/div/div[2]/div[1]/label[3]/div/div").click()
@@ -121,7 +121,7 @@ def parcing_data_MM_sync(MM_start_date: str, MM_end_date: str,
 
         driver.get("https://arm-mmonitor.mos.ru/#/export-files")
 
-        for i in range(50):
+        for i in range(70):
             try:
                 el = WebDriverWait(driver, 3).until(EC.visibility_of_element_located((By.XPATH,
                     "/html/body/div/div/section/section/main/div/div/div[1]/div/div/div/div"
@@ -414,7 +414,7 @@ def process_file_MM(filepath: str, timenow: str):
         snow_all_expect_today(df)
 
     processed_file_path = os.path.join(
-        directory, f"Монитор в работе_{timenow}_{datetime.now().strftime('%d.%m.%y')}.xlsx"
+        directory, f"Монитор в работе {timenow}.xlsx"
     )
     with pd.ExcelWriter(processed_file_path, engine="openpyxl") as writer:
         df.to_excel(writer, sheet_name="СВОД", index=False, startrow=0)
@@ -436,7 +436,7 @@ def process_file_MM(filepath: str, timenow: str):
     if has_snow:
         _run_vba(excel, workbook, vba_macro_snow, "CreatePivotTableSnow")
 
-    pdf_file_name = f"Монитор_в_работе_{timenow}_{datetime.now().strftime('%d.%m.%y')}.pdf"
+    pdf_file_name = f"Монитор в работе {timenow}.pdf"
     pdf_path      = os.path.join(os.path.dirname(processed_file_path), pdf_file_name)
 
     wsFirst = workbook.Worksheets(1)
@@ -708,9 +708,10 @@ def mm(scheduled_time=None):
     _coinit = False
     try:
         today = datetime.now()
-        timenow = choosing_time_MM()
-        start_date = f"01.01.{today.year}"
-        end_date   = today.strftime("%d.%m.%Y")
+        timenow = datetime.now().strftime("%d.%m.%Y %H-%M")
+        monday = today - timedelta(days=today.weekday())
+        start_date = monday.strftime("%d.%m.%Y") + "0000"
+        end_date = today.strftime("%d.%m.%Y") + "2100"
 
         print(f"[mm] Запуск парсинга ММ... период {start_date} — {end_date}, время суток: {timenow}")
         success = parcing_data_MM_sync(start_date, end_date)
@@ -745,7 +746,7 @@ def mm(scheduled_time=None):
             shutil.move(pdf_path, pdf_dest)
             upload_files.append(pdf_dest)
 
-        keep_latest_files(static_directory, keep=5)
+        keep_latest_files(static_directory, 'MM', keep=5)
         upload_reports_to_server("MM", upload_files)
         _record_success("mm")
         print("[mm] Завершено успешно.")

@@ -348,12 +348,29 @@ Sub CreatePivotTable()
     Set wsPivot = ThisWorkbook.Sheets.Add(Before:=ThisWorkbook.Sheets(1))
     wsPivot.Name = "Сводная таблица"
 
-    lastRow = wsData.Cells(wsData.Rows.Count, "A").End(xlUp).Row
     lastCol = wsData.Cells(1, wsData.Columns.Count).End(xlToLeft).Column
+    lastRow = wsData.Cells(wsData.Rows.Count, "A").End(xlUp).Row
+
+    ' Подстраховка: если в столбце A есть дыры, меряем по самому длинному столбцу
+    Dim c As Long, r As Long
+    For c = 1 To lastCol
+        r = wsData.Cells(wsData.Rows.Count, c).End(xlUp).Row
+        If r > lastRow Then lastRow = r
+    Next c
+
+    ' Если данных нет (только шапка или пусто) — выходим без падения
+    If lastRow < 2 Or lastCol < 1 Then
+        Err.Raise vbObjectError + 513, "CreatePivotTable", "Нет данных для сводной: lastRow=" & lastRow & " lastCol=" & lastCol
+    End If
+
+    Dim srcAddr As String
+    srcAddr = "'" & wsData.Name & "'!" & _
+              wsData.Range(wsData.Cells(1, 1), wsData.Cells(lastRow, lastCol)).Address(True, True, xlR1C1)
 
     Set pivotCache = ThisWorkbook.PivotCaches.Create( _
         SourceType:=xlDatabase, _
-        SourceData:=wsData.Cells(1, 1).Resize(lastRow, lastCol))
+        SourceData:=srcAddr, _
+        Version:=6)
 
     Set pivotTable = pivotCache.CreatePivotTable( _
         TableDestination:=wsPivot.Cells(7, 1), _
