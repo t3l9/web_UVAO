@@ -766,7 +766,7 @@ def _sync_mm_data(df, timenow: str) -> None:
             deadline,
             _str(row.get("Район")),
             _str(row.get("Проблема")),
-            _str(row.get("Балансодержатель")),
+            _str(row.get("Система-источник")),
             _str(row.get("Статус в системе")),
             oiv,
             _str(row.get("Адрес")),
