@@ -804,7 +804,7 @@ def _sync_mm_data(df, timenow: str) -> None:
 
 def mm(scheduled_time=None):
     from ..config import BASE_DIR, _running
-    from ..utils.helpers import upload_reports_to_server, keep_latest_files
+    from ..utils.helpers import upload_reports_to_server, keep_latest_files, send_file_to_telegram
     from ..utils.status import _record_success, _record_failure
 
     if _running["mm"]:
@@ -855,6 +855,14 @@ def mm(scheduled_time=None):
 
         keep_latest_files(static_directory, 'MM', keep=5)
         upload_reports_to_server("MM", upload_files)
+
+        special_times_mm = {"08:50", "12:50", "15:50", "20:50"}
+        if scheduled_time in special_times_mm:
+            print(f"[mm] Специальное время ({scheduled_time}) — отправляем в ТДМ")
+            send_file_to_telegram(processed_dest, caption="Монитор в работе — Excel")
+            if pdf_path:
+                send_file_to_telegram(pdf_dest, caption="Монитор в работе — PDF")
+
         _record_success("mm")
         print("[mm] Завершено успешно.")
 
