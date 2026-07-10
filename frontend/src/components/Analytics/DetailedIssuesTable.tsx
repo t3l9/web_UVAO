@@ -12,6 +12,7 @@ interface Issue {
   status: string;
   address: string;
   controlObject: string;
+  isOverdue: string;
 }
 
 interface DetailedIssuesTableProps {
@@ -54,6 +55,7 @@ const DetailedIssuesTable: React.FC<DetailedIssuesTableProps> = ({
         status: i.status || 'В работе',
         address: i.address || '',
         controlObject: i.controlObject || '',
+        isOverdue: i.isOverdue || '',
       }))
     ).filter((i: Issue) => selectedDistricts.includes(i.region_id));
   }, [displayData, selectedDistricts]);
@@ -269,7 +271,11 @@ const DetailedIssuesTable: React.FC<DetailedIssuesTableProps> = ({
           </thead>
           <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
             {paginatedIssues.map((issue, idx) => (
-              <tr key={`${issue.ID}-${idx}`} className="hover:bg-gray-50/60 dark:hover:bg-gray-800/30 transition-colors">
+              <tr key={`${issue.ID}-${idx}`} className={`transition-colors ${
+                issue.isOverdue === 'Да'
+                  ? 'bg-red-50 dark:bg-red-950/20 hover:bg-red-100/70 dark:hover:bg-red-950/30'
+                  : 'hover:bg-gray-50/60 dark:hover:bg-gray-800/30'
+              }`}>
                 <td className="px-4 py-3 font-mono text-xs">
                   {isNgOrMzhi(issue.Resource) ? (
                     <a href={ngLink(issue.ID)} target="_blank" rel="noopener noreferrer" className="text-primary-600 dark:text-primary-400 hover:underline font-semibold">{issue.ID}</a>

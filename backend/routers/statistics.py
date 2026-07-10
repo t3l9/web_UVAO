@@ -478,7 +478,8 @@ def get_chart_data(
             Resource,
             Status,
             Address,
-            ControlObject
+            ControlObject,
+            IsOverdue
         FROM MM_prosrok
         WHERE 1=1
         """
@@ -516,6 +517,7 @@ def get_chart_data(
                 "status": row[5],
                 "address": row[6],
                 "controlObject": row[7],
+                "isOverdue": row[8],
             }
 
             if date_str not in data_by_date:
