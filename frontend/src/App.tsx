@@ -18,6 +18,7 @@ const ArchiveReports          = lazy(() => import('./components/Analytics/Archiv
 const AnalyticsDashboard      = lazy(() => import('./components/Analytics/Dashboard'));
 const NgOverdueDashboard      = lazy(() => import('./components/Analytics/NgOverdueDashboard'));
 const TransferStatisticsReport = lazy(() => import('./components/TransferStatisticsReport'));
+const BotTransfers            = lazy(() => import('./components/Analytics/BotTransfers'));
 const AdminPanel              = lazy(() => import('./components/AdminPanel'));
 
 function PageLoader() {
@@ -164,6 +165,7 @@ function App() {
               <Route path="analytics/dashboard" element={<AnalyticsDashboard user={user} />} />
               <Route path="analytics/ng-overdue" element={<NgOverdueDashboard user={user} />} />
               <Route path="analytics/transfer-statistics" element={<TransferStatisticsReport />} />
+              <Route path="analytics/bot-transfers" element={<BotTransfers user={user} />} />
               <Route path="admin" element={<AdminPanel />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>

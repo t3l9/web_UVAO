@@ -4,7 +4,7 @@ import {
   MessageSquare, Monitor, Building2, Home, BarChart3,
   Camera, AlertTriangle, BrainCircuit, BookOpen,
   Table, Bot, ExternalLink, ChevronRight, Shield,
-  HelpCircle, ChevronDown, LineChart, Archive, ListChecks,
+  HelpCircle, ChevronDown, LineChart, Archive, ListChecks, ClipboardList,
 } from 'lucide-react';
 import { User } from '../types';
 
@@ -136,6 +136,14 @@ const analyticsSections = [
     description: 'Сообщения НГ в работе, день по правилу 8 дней и статус устранения',
     icon: ListChecks,
     iconClass: 'bg-violet-100 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400',
+    prefectOnly: false,
+  },
+  {
+    id: 'bot-transfers',
+    title: 'Заявки на перенос',
+    description: 'Все заявки через бота-согласователя: статусы, районы, причины отказа',
+    icon: ClipboardList,
+    iconClass: 'bg-pink-100 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400',
     prefectOnly: false,
   },
 ];

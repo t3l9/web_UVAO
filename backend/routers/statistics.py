@@ -3,7 +3,7 @@ import os
 import re
 import sqlite3
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query
@@ -13,6 +13,83 @@ from ..config import DATABASE_PATH, DB_DELAYS_PATH, directory
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+@router.get('/api/bot-transfers')
+def get_bot_transfers(
+    district: Optional[List[str]] = Query(None),
+    status_filter: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+):
+    try:
+        conn = sqlite3.connect(DB_DELAYS_PATH, timeout=30)
+        conn.execute("PRAGMA journal_mode=WAL")
+        cur = conn.cursor()
+
+        where_clauses: list = []
+        params: list = []
+
+        if district:
+            placeholders = ','.join(['?'] * len(district))
+            where_clauses.append(f"district IN ({placeholders})")
+            params.extend(district)
+        if status_filter:
+            where_clauses.append("status = ?")
+            params.append(status_filter)
+
+        where = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+
+        cur.execute(f"""
+            SELECT
+                COUNT(*),
+                SUM(CASE WHEN status IN ('Одобрено ✅', 'Одобрено окончательно (модератор 1)') THEN 1 ELSE 0 END),
+                SUM(CASE WHEN status LIKE 'Отклонено%' THEN 1 ELSE 0 END),
+                SUM(CASE WHEN status NOT IN ('Одобрено ✅', 'Одобрено окончательно (модератор 1)')
+                         AND status NOT LIKE 'Отклонено%' THEN 1 ELSE 0 END)
+            FROM requests {where}
+        """, params)
+        row = cur.fetchone()
+        total = row[0] or 0
+        total_approved = row[1] or 0
+        total_rejected = row[2] or 0
+        total_pending = row[3] or 0
+
+        offset = (page - 1) * page_size
+        cur.execute(f"""
+            SELECT id, status, created_at, district, level, portal_number,
+                   transfer_type, desired_date, reject_reason
+            FROM requests {where}
+            ORDER BY created_at DESC
+            LIMIT ? OFFSET ?
+        """, params + [page_size, offset])
+
+        rows = cur.fetchall()
+        conn.close()
+
+        data = [
+            {
+                "id": r[0], "status": r[1], "created_at": r[2],
+                "district": r[3], "level": r[4], "portal_number": r[5],
+                "transfer_type": r[6], "desired_date": r[7], "reject_reason": r[8],
+            }
+            for r in rows
+        ]
+
+        return {
+            "data": data,
+            "total": total,
+            "total_approved": int(total_approved),
+            "total_rejected": int(total_rejected),
+            "total_pending": int(total_pending),
+            "page": page,
+            "page_size": page_size,
+        }
+
+    except Exception as e:
+        print(f"Error in get_bot_transfers: {e}")
+        logger.exception('bot transfers error')
+        raise HTTPException(status_code=500, detail='Внутренняя ошибка сервера')
 
 
 @router.get('/api/transfer-statistics')

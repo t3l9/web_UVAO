@@ -4,7 +4,7 @@ import {
   LogOut, Home, FileText, Sun, Moon, Menu, X,
   BarChart3, BrainCircuit, BookOpen, Table, Bot,
   Building2, ExternalLink, MessageSquare, Monitor,
-  Camera, AlertTriangle, Archive, LineChart, ListChecks,
+  Camera, AlertTriangle, Archive, LineChart, ListChecks, ClipboardList,
 } from 'lucide-react';
 import { User } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
@@ -40,6 +40,7 @@ const analyticsNavItems: (NavItemDef & { prefectOnly?: boolean })[] = [
   { to: '/analytics/dashboard', label: 'Дашборд ММ', icon: LineChart },
   { to: '/analytics/ng-overdue', label: 'Дашборд НГ', icon: ListChecks },
   { to: '/analytics/transfer-statistics', label: 'Статистика переносов', icon: BarChart3, prefectOnly: true },
+  { to: '/analytics/bot-transfers', label: 'Заявки на перенос', icon: ClipboardList },
 ];
 
 const externalLinks = [
