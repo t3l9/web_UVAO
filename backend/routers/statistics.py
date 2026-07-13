@@ -18,7 +18,7 @@ router = APIRouter()
 @router.get('/api/bot-transfers')
 def get_bot_transfers(
     district: Optional[List[str]] = Query(None),
-    status_filter: Optional[str] = Query(None),
+    portal_search: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
 ):
@@ -34,9 +34,9 @@ def get_bot_transfers(
             placeholders = ','.join(['?'] * len(district))
             where_clauses.append(f"district IN ({placeholders})")
             params.extend(district)
-        if status_filter:
-            where_clauses.append("status = ?")
-            params.append(status_filter)
+        if portal_search and portal_search.strip():
+            where_clauses.append("portal_number LIKE ?")
+            params.append(f"%{portal_search.strip()}%")
 
         where = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
 

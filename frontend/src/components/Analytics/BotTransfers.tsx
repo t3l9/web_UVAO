@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { ClipboardList, CheckCircle2, Clock, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { ClipboardList, CheckCircle2, Clock, XCircle, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import api from '../../utils/api';
 import { User } from '../../types';
 
@@ -35,11 +35,6 @@ const DISTRICTS = [
   'Рязанский', 'Текстильщики', 'Южнопортовый',
 ];
 
-const STATUSES = [
-  { value: '', label: 'Все статусы' },
-  { value: 'Одобрена', label: 'Одобрена' },
-  { value: 'Отклонена', label: 'Отклонена' },
-];
 
 function getStatusStyle(status: string): string {
   if (status === 'Одобрена') {
@@ -99,16 +94,17 @@ export default function BotTransfers({ user: _user }: BotTransfersProps) {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [selectedDistricts, setSelectedDistricts] = useState<string[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState('');
+  const [portalSearch, setPortalSearch] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchData = useCallback(async (pg: number, districts: string[], status: string) => {
+  const fetchData = useCallback(async (pg: number, districts: string[], search: string) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       params.append('page', String(pg));
       params.append('page_size', String(PAGE_SIZE));
       districts.forEach(d => params.append('district', d));
-      if (status) params.append('status_filter', status);
+      if (search.trim()) params.append('portal_search', search.trim());
 
       const { data } = await api.get<TransfersResponse>(`/api/bot-transfers?${params}`);
       setTransfers(data.data);
@@ -124,8 +120,17 @@ export default function BotTransfers({ user: _user }: BotTransfersProps) {
   }, []);
 
   useEffect(() => {
-    fetchData(page, selectedDistricts, selectedStatus);
-  }, [page, selectedDistricts, selectedStatus, fetchData]);
+    fetchData(page, selectedDistricts, portalSearch);
+  }, [page, selectedDistricts, fetchData]);
+
+  const handleSearchChange = (value: string) => {
+    setPortalSearch(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setPage(1);
+      fetchData(1, selectedDistricts, value);
+    }, 400);
+  };
 
   const toggleDistrict = (d: string) => {
     setPage(1);
@@ -221,17 +226,31 @@ export default function BotTransfers({ user: _user }: BotTransfersProps) {
 
         <div>
           <p className="text-[10px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-widest mb-2.5">
-            Статус
+            Поиск по номеру на НГ
           </p>
-          <select
-            value={selectedStatus}
-            onChange={e => { setSelectedStatus(e.target.value); setPage(1); }}
-            className="text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 outline-none focus:ring-2 focus:ring-primary-400 transition-all"
-          >
-            {STATUSES.map(s => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
-          </select>
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
+            <input
+              type="text"
+              value={portalSearch}
+              onChange={e => handleSearchChange(e.target.value)}
+              placeholder="Введите номер..."
+              className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-400 transition-all"
+            />
+            {portalSearch && (
+              <button
+                onClick={() => handleSearchChange('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors text-xs font-bold"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          {portalSearch && (
+            <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-600">
+              Показаны заявки содержащие «{portalSearch}»
+            </p>
+          )}
         </div>
       </div>
 
