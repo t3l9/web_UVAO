@@ -64,6 +64,13 @@ const reportTypes = [
     iconClass: 'bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400',
     prefectOnly: true,
   },
+  {
+    id: 'bot-transfers',
+    title: 'Заявки на перенос',
+    description: 'Все заявки через бота-согласователя: статусы, районы, причины отказа',
+    icon: ClipboardList,
+    iconClass: 'bg-pink-100 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400',
+  },
 ] as const;
 
 const additionalSections = [
@@ -136,14 +143,6 @@ const analyticsSections = [
     description: 'Сообщения НГ в работе, день по правилу 8 дней и статус устранения',
     icon: ListChecks,
     iconClass: 'bg-violet-100 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400',
-    prefectOnly: false,
-  },
-  {
-    id: 'bot-transfers',
-    title: 'Заявки на перенос',
-    description: 'Все заявки через бота-согласователя: статусы, районы, причины отказа',
-    icon: ClipboardList,
-    iconClass: 'bg-pink-100 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400',
     prefectOnly: false,
   },
 ];

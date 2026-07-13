@@ -28,6 +28,7 @@ const reportNavItems: NavItemDef[] = [
   { to: '/report/mzhi-statistics', label: 'Статистика МЖИ', icon: BarChart3 },
   { to: '/report/tsafap', label: 'Нарушения ЦАФАП', icon: Camera },
   { to: '/report/oati', label: 'Нарушения ОАТИ', icon: AlertTriangle },
+  { to: '/report/bot-transfers', label: 'Заявки на перенос', icon: ClipboardList },
 ];
 
 const toolNavItems: NavItemDef[] = [
@@ -40,7 +41,6 @@ const analyticsNavItems: (NavItemDef & { prefectOnly?: boolean })[] = [
   { to: '/analytics/dashboard', label: 'Дашборд ММ', icon: LineChart },
   { to: '/analytics/ng-overdue', label: 'Дашборд НГ', icon: ListChecks },
   { to: '/analytics/transfer-statistics', label: 'Статистика переносов', icon: BarChart3, prefectOnly: true },
-  { to: '/analytics/bot-transfers', label: 'Заявки на перенос', icon: ClipboardList },
 ];
 
 const externalLinks = [

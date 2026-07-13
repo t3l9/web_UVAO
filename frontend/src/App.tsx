@@ -157,6 +157,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Layout user={user} onLogout={handleLogout} />}>
               <Route index element={<Dashboard user={user} />} />
+              <Route path="report/bot-transfers" element={<BotTransfers user={user} />} />
               <Route path="report/:type" element={<ReportViewer user={user} />} />
               <Route path="scripts" element={<Scripts />} />
               <Route path="knowledge" element={<Knowledge user={user} />} />
@@ -165,7 +166,6 @@ function App() {
               <Route path="analytics/dashboard" element={<AnalyticsDashboard user={user} />} />
               <Route path="analytics/ng-overdue" element={<NgOverdueDashboard user={user} />} />
               <Route path="analytics/transfer-statistics" element={<TransferStatisticsReport />} />
-              <Route path="analytics/bot-transfers" element={<BotTransfers user={user} />} />
               <Route path="admin" element={<AdminPanel />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>

@@ -37,39 +37,28 @@ const DISTRICTS = [
 
 const STATUSES = [
   { value: '', label: 'Все статусы' },
-  { value: 'Одобрено ✅', label: 'Одобрено ✅' },
-  { value: 'Одобрено окончательно (модератор 1)', label: 'Одобрено окончательно (мод.1)' },
-  { value: 'Одобрено модератором 2 — ожидает модератора 1', label: 'Одобрено мод.2 — ожидает мод.1' },
-  { value: 'Ожидает согласования (модератор 2)', label: 'Ожидает согласования (мод.2)' },
-  { value: 'Отклонено ❌', label: 'Отклонено ❌' },
-  { value: 'Отклонено модератором 1 (ожидает причина)', label: 'Отклонено модератором 1' },
-  { value: 'Отклонено модератором 2 (ожидает причина)', label: 'Отклонено модератором 2' },
+  { value: 'Одобрена', label: 'Одобрена' },
+  { value: 'Отклонена', label: 'Отклонена' },
 ];
 
 function getStatusStyle(status: string): string {
-  if (status === 'Одобрено ✅' || status === 'Одобрено окончательно (модератор 1)') {
+  if (status === 'Одобрена') {
     return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50';
   }
-  if (status.startsWith('Одобрено модератором')) {
-    return 'bg-lime-100 text-lime-800 dark:bg-lime-950/60 dark:text-lime-300 border border-lime-200 dark:border-lime-800/50';
-  }
-  if (status.startsWith('Ожидает')) {
-    return 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50';
-  }
-  if (status.startsWith('Отклонено')) {
+  if (status === 'Отклонена') {
     return 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300 border border-red-200 dark:border-red-800/50';
   }
-  return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700';
+  return 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50';
 }
 
 function getRowStyle(status: string): string {
-  if (status === 'Одобрено ✅' || status === 'Одобрено окончательно (модератор 1)') {
+  if (status === 'Одобрена') {
     return 'bg-emerald-50/40 dark:bg-emerald-950/10 hover:bg-emerald-50 dark:hover:bg-emerald-950/20';
   }
-  if (status.startsWith('Отклонено')) {
+  if (status === 'Отклонена') {
     return 'bg-red-50/40 dark:bg-red-950/10 hover:bg-red-50 dark:hover:bg-red-950/20';
   }
-  return 'hover:bg-gray-50/60 dark:hover:bg-gray-800/30';
+  return 'bg-amber-50/30 dark:bg-amber-950/10 hover:bg-amber-50 dark:hover:bg-amber-950/20';
 }
 
 function formatDateTime(dateStr: string): string {

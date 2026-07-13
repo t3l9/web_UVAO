@@ -43,10 +43,9 @@ def get_bot_transfers(
         cur.execute(f"""
             SELECT
                 COUNT(*),
-                SUM(CASE WHEN status IN ('Одобрено ✅', 'Одобрено окончательно (модератор 1)') THEN 1 ELSE 0 END),
-                SUM(CASE WHEN status LIKE 'Отклонено%' THEN 1 ELSE 0 END),
-                SUM(CASE WHEN status NOT IN ('Одобрено ✅', 'Одобрено окончательно (модератор 1)')
-                         AND status NOT LIKE 'Отклонено%' THEN 1 ELSE 0 END)
+                SUM(CASE WHEN status = 'Одобрена' THEN 1 ELSE 0 END),
+                SUM(CASE WHEN status = 'Отклонена' THEN 1 ELSE 0 END),
+                SUM(CASE WHEN status NOT IN ('Одобрена', 'Отклонена') THEN 1 ELSE 0 END)
             FROM requests {where}
         """, params)
         row = cur.fetchone()
