@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { Trash2, Search, X, ArrowUp, ArrowDown, ChevronsUpDown, Download } from 'lucide-react';
 
@@ -137,14 +136,16 @@ const DetailedIssuesTable: React.FC<DetailedIssuesTableProps> = ({
     'Ссылка': isNgOrMzhi(i.Resource) ? ngLink(i.ID) : isCafapOati(i.Resource) ? cafapLink(i.ID) : 'Нет ссылки',
   });
 
-  const exportSingleToExcel = () => {
+  const exportSingleToExcel = async () => {
+    const XLSX = await import('xlsx');
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(allIssues.map(buildExcelRow)), 'Обращения');
     const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     saveAs(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `обращения_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
-  const exportWithSheets = () => {
+  const exportWithSheets = async () => {
+    const XLSX = await import('xlsx');
     const toRows = (source: any[]) =>
       source.flatMap(d =>
         d.issues

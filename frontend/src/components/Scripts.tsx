@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { read, utils } from 'xlsx';
 import { Script, ScriptFilter, ExcelRow } from '../types';
 import {
   Search, X, Copy, Check, ChevronRight,
@@ -223,6 +222,7 @@ function Scripts() {
         const resp = await fetch('/files/f1scripta.xlsx');
         if (!resp.ok) throw new Error('not found');
         const buf = await resp.arrayBuffer();
+        const { read, utils } = await import('xlsx');
         const wb = read(buf);
         const ws = wb.Sheets[wb.SheetNames[0]];
         const data = utils.sheet_to_json<ExcelRow>(ws, { raw: false });
