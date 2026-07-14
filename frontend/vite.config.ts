@@ -42,7 +42,7 @@ export default defineConfig({
         },
       },
     },
-    target: 'esnext',
+    target: ['es2020', 'safari14'],
     chunkSizeWarningLimit: 800,
   },
   worker: {
