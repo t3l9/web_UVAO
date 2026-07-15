@@ -41,12 +41,12 @@ def run_scheduled_tasks():
         schedule.every().day.at(schedule_time).do(mwis)
 
     '''Настройка выполнения задач каждый день для нарушений ЦАФАП'''
-    tsafap_schedule = ["07:29"]
+    tsafap_schedule = ["09:29"]
     for schedule_time in tsafap_schedule:
         schedule.every().day.at(schedule_time).do(tsafap)
 
     '''Настройка выполнения задач каждый день для нарушений ОАТИ'''
-    oati_schedule = ["06:59"]
+    oati_schedule = ["08:59"]
     for schedule_time in oati_schedule:
         schedule.every().day.at(schedule_time).do(oati)
 
