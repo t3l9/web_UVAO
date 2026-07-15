@@ -78,7 +78,7 @@ const TsafapReport: React.FC<TsafapReportProps> = ({ folderName }) => {
         </div>
         <div className="text-sm text-amber-700 dark:text-amber-300 leading-relaxed space-y-0.5">
           <p>Сводная таблица нарушений, зафиксированных ЦАФАП за вчерашний день.</p>
-          <p className="text-amber-600 dark:text-amber-400">Отчёт обновляется автоматически каждое утро в 07:30.</p>
+          <p className="text-amber-600 dark:text-amber-400">Отчёт обновляется автоматически каждое утро в 09:30.</p>
         </div>
       </div>
 

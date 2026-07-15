@@ -78,7 +78,7 @@ const OatiReport: React.FC<OatiReportProps> = ({ folderName }) => {
         </div>
         <div className="text-sm text-red-700 dark:text-red-300 leading-relaxed space-y-0.5">
           <p>Сводная таблица нарушений, зафиксированных ОАТИ за вчерашний день.</p>
-          <p className="text-red-600 dark:text-red-400">Отчёт обновляется автоматически каждое утро в 07:00.</p>
+          <p className="text-red-600 dark:text-red-400">Отчёт обновляется автоматически каждое утро в 09:00.</p>
         </div>
       </div>
 
