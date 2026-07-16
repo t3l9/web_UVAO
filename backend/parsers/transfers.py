@@ -85,17 +85,14 @@ def parcing_delay_ng():
         print("Подтверждение экспорта")
         time.sleep(1)
 
+        # Переходим на страницу загрузок
         driver.get('https://gorod.mos.ru/admin/ker/olap/downloads')
-        print("Переход в загрузки")
-
-        WebDriverWait(driver, 1500).until(EC.presence_of_element_located(
-            (By.XPATH, '/html/body/div[1]/div/div[2]/main/div/div[1]/div/div[2]/div[1]/table/tbody/tr[1]/td[5]/div/i')))
-
-        button = driver.find_element(By.XPATH,
-                                     '/html/body/div[1]/div/div[2]/main/div/div[1]/div/div[2]/div[1]/table/tbody/tr[1]/td[5]/div/i')
-        button.click()
-        print("Скачивание файла начато")
-        time.sleep(10)
+        # ждём, пока в первой строке появится иконка скачивания
+        icon = WebDriverWait(driver, 1500).until(
+            EC.element_to_be_clickable((By.XPATH, "//table/tbody/tr[1]//i[text()='file_download']"))
+        )
+        icon.click()
+        time.sleep(5)
 
         desktop_path = os.path.join(os.environ['USERPROFILE'], 'Desktop')
         target_folder = os.path.join(desktop_path, 'delays', 'ng')

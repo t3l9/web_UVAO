@@ -159,15 +159,14 @@ def parcing_mji(attempts=2):
 
             driver.get('https://er.mos.ru/ker/admin/issues/monitor_mzi?sidebar=organization')
             time.sleep(3)
+            # Переходим на страницу загрузок
             driver.get('https://gorod.mos.ru/admin/ker/olap/downloads')
-
-            WebDriverWait(driver, 2000).until(EC.presence_of_element_located(
-                (By.XPATH,
-                 '/html/body/div[1]/div/div[2]/main/div/div[1]/div/div[2]/div[1]/table/tbody/tr[1]/td[5]/div/i')))
-            button = driver.find_element(By.XPATH,
-                                         '/html/body/div[1]/div/div[2]/main/div/div[1]/div/div[2]/div[1]/table/tbody/tr[1]/td[5]/div/i')
-            button.click()
-            time.sleep(1.5)
+            # ждём, пока в первой строке появится иконка скачивания
+            icon = WebDriverWait(driver, 1500).until(
+                EC.element_to_be_clickable((By.XPATH, "//table/tbody/tr[1]//i[text()='file_download']"))
+            )
+            icon.click()
+            time.sleep(5)
 
             print("Парсинг завершен успешно.")
             return True

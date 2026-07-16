@@ -169,31 +169,31 @@ def parcing_MWI(attempts=2):
 
             try:
                 if processed_tabs[0]:
-                    WebDriverWait(driver, 300).until(EC.presence_of_element_located((By.XPATH,
-                                                                                     '/html/body/div[1]/div/div[2]/main/div/div[1]/div/div[2]/div[1]/table/tbody/tr[3]/td[5]/div/i')))
-                    button = driver.find_element(By.XPATH,
-                                                 '/html/body/div[1]/div/div[2]/main/div/div[1]/div/div[2]/div[1]/table/tbody/tr[3]/td[5]/div/i')
-                    button.click()
+                    # ждём, пока в первой строке появится иконка скачивания
+                    icon = WebDriverWait(driver, 1500).until(
+                        EC.element_to_be_clickable((By.XPATH, "//table/tbody/tr[3]//i[text()='file_download']"))
+                    )
+                    icon.click()
                     time.sleep(1)
             except Exception:
                 print("❌ Ошибка при скачивании файла для первой вкладки")
             try:
                 if processed_tabs[1]:
-                    WebDriverWait(driver, 300).until(EC.presence_of_element_located((By.XPATH,
-                                                                                     '/html/body/div[1]/div/div[2]/main/div/div[1]/div/div[2]/div[1]/table/tbody/tr[2]/td[5]/div/i')))
-                    button = driver.find_element(By.XPATH,
-                                                 '/html/body/div[1]/div/div[2]/main/div/div[1]/div/div[2]/div[1]/table/tbody/tr[2]/td[5]/div/i')
-                    button.click()
+                    # ждём, пока в первой строке появится иконка скачивания
+                    icon = WebDriverWait(driver, 1500).until(
+                        EC.element_to_be_clickable((By.XPATH, "//table/tbody/tr[2]//i[text()='file_download']"))
+                    )
+                    icon.click()
                     time.sleep(1)
             except Exception:
                 print("❌ Ошибка при скачивании файла для второй вкладки")
             try:
                 if processed_tabs[2]:
-                    WebDriverWait(driver, 300).until(EC.presence_of_element_located((By.XPATH,
-                                                                                     '/html/body/div[1]/div/div[2]/main/div/div[1]/div/div[2]/div[1]/table/tbody/tr[1]/td[5]/div/i')))
-                    button = driver.find_element(By.XPATH,
-                                                 '/html/body/div[1]/div/div[2]/main/div/div[1]/div/div[2]/div[1]/table/tbody/tr[1]/td[5]/div/i')
-                    button.click()
+                    # ждём, пока в первой строке появится иконка скачивания
+                    icon = WebDriverWait(driver, 1500).until(
+                        EC.element_to_be_clickable((By.XPATH, "//table/tbody/tr[1]//i[text()='file_download']"))
+                    )
+                    icon.click()
                     time.sleep(1.5)
             except Exception:
                 print("❌ Ошибка при скачивании файла для третьей вкладки")
